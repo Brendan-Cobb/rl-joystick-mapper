@@ -4,14 +4,13 @@ C#/.NET 8 Windows Forms port of the supplied Python prototype. Left-stick cardin
 
 ## Build and package (Windows x64)
 
-Install .NET 8 SDK and Inno Setup 6. Obtain **x64** `SDL2.dll` from the official SDL2 release and **x64** `ViGEmClient.dll` from the official ViGEmClient SDK release; review provenance and licenses before redistribution. Put both DLLs in `publish/` next to the exe after publishing. (They are NOT present in this source repository.) Do not use untrusted DLL download sites. Then:
+For maintainers building from source: install .NET 8 SDK and Inno Setup 6 or 7 on Windows x64, then from the repository root run:
 
 ```powershell
-dotnet publish src/RlRemapper/RlRemapper.csproj -c Release -r win-x64 --self-contained true -o publish
-# Copy the verified x64 SDL2.dll and ViGEmClient.dll to publish\
-if (!(Test-Path publish/SDL2.dll) -or !(Test-Path publish/ViGEmClient.dll)) { throw 'Missing native DLLs' }
-iscc installer/RlRemapper.iss
+powershell -NoProfile -ExecutionPolicy Bypass -File build/Build-Installer.ps1
 ```
+
+The build script downloads pinned x64 SDL2 2.32.10 from the upstream SDL release and x64 ViGEmClient.dll from a fixed ViGEm.NET upstream commit, verifies SHA-256 hashes, copies their licenses, performs a self-contained `win-x64` publish and compiles `installer/Output/RLRemapper-Setup.exe`. Native DLLs **are included in the resulting installer**; end users do not fetch them. The Windows build-script workflow has not been executed on Windows. A setup executable was cross-compiled with Inno Setup 7 under Wine on Linux; actual driver installation and controller behavior still require testing on Windows hardware. The compiled installer is not code-signed by this project, so Windows may show an unrecognized-app warning.
 
 The elevated Inno installer checks the ViGEmBus and HidHide services, downloads missing x64 installers from the latest official `nefarius` GitHub releases, validates Authenticode publisher/signature, launches the vendor installers and verifies service presence. It then locates HidHide's CLI and registers the exact installed remapper executable in its application allowlist. It **does not** hide every controller or turn on global inverse mode. Setup fails closed if download, signing, driver checks or allowlisting fails. A vendor installer may still show prompts/UAC; a reboot may be required. ViGEmBus is archived: assess its trust/support before installation. The app and driver installer require Windows 10+ x64. No manual HidHide configuration client is required.
 
