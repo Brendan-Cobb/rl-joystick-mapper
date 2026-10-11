@@ -7,7 +7,8 @@ internal sealed class Runner
 {
     readonly Func<Settings> settings;
     readonly Action<string> status;
-    public Runner(Func<Settings> settings, Action<string> status) { this.settings = settings; this.status = status; }
+    readonly bool waitForPhysical;
+    public Runner(Func<Settings> settings, Action<string> status, bool waitForPhysical = false) { this.settings = settings; this.status = status; this.waitForPhysical = waitForPhysical; }
     public void Run(CancellationToken token)
     {
         IntPtr client = IntPtr.Zero, target = IntPtr.Zero, js = IntPtr.Zero;
@@ -20,17 +21,33 @@ internal sealed class Runner
             if (Sdl.SDL_Init(Sdl.Joystick) != 0) throw new InvalidOperationException("SDL joystick initialization failed.");
             sdl = true;
             var cfg = settings(); cfg.Validate();
+            // In Player 1 preparation mode the physical pad is unplugged. Allocate
+            // the virtual target first so it can claim the first free XInput slot.
+            client = Vigem.vigem_alloc(); target = Vigem.vigem_target_x360_alloc();
+            if (client == IntPtr.Zero || target == IntPtr.Zero) throw new InvalidOperationException("ViGEm allocation failed.");
+            Vigem.Check(Vigem.vigem_connect(client)); connected = true;
+            Vigem.Check(Vigem.vigem_target_add(client, target)); added = true;
+            var initial = new XusbReport(); Vigem.Check(Vigem.vigem_target_x360_update(client, target, ref initial));
             js = Sdl.OpenPhysical(cfg.ControllerIndex);
+            if (waitForPhysical)
+            {
+                Vigem.Check(Vigem.vigem_target_x360_get_user_index(client, target, out uint slot));
+                if (slot != 0) throw new InvalidOperationException($"Virtual controller received slot {slot + 1}, not Player 1. Another controller is reserving the first slot; disconnect it and try again.");
+                status("Player 1 virtual controller ready; reconnect the physical controller");
+                while (js == IntPtr.Zero && !token.IsCancellationRequested)
+                {
+                    token.WaitHandle.WaitOne(250);
+                    Sdl.SDL_JoystickUpdate(); js = Sdl.OpenPhysical(cfg.ControllerIndex);
+                }
+                if (token.IsCancellationRequested) return;
+                HidHide.ConfigureReconnected(settings().DevicePath);
+            }
             if (js == IntPtr.Zero) throw new InvalidOperationException("No physical controller found. Check HidHide whitelist and controller index.");
             string name = Marshal.PtrToStringUTF8(Sdl.SDL_JoystickName(js)) ?? "controller";
             // Record exact SDL GUID for reconnect; never attach to our own ViGEm device.
             string guid = "";
             for (int i = 0, n = 0; i < Sdl.SDL_NumJoysticks(); i++)
                 if (!Sdl.Virtual(Sdl.Guid(i)) && n++ == cfg.ControllerIndex) { guid = Sdl.Guid(i); break; }
-            client = Vigem.vigem_alloc(); target = Vigem.vigem_target_x360_alloc();
-            if (client == IntPtr.Zero || target == IntPtr.Zero) throw new InvalidOperationException("ViGEm allocation failed.");
-            Vigem.Check(Vigem.vigem_connect(client)); connected = true;
-            Vigem.Check(Vigem.vigem_target_add(client, target)); added = true;
             status($"Running: {name}");
             var clock = Stopwatch.StartNew();
             long next = clock.ElapsedTicks;

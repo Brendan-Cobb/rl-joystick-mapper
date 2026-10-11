@@ -59,6 +59,7 @@ internal static class Vigem
     [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint vigem_target_add(IntPtr client, IntPtr target);
     [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void vigem_target_remove(IntPtr client, IntPtr target);
     [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint vigem_target_x360_update(IntPtr client, IntPtr target, ref XusbReport report);
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint vigem_target_x360_get_user_index(IntPtr client, IntPtr target, out uint index);
     // ViGEm success is 0x20000000 (VIGEM_ERROR_NONE).
     public static void Check(uint result) { if (result != 0x20000000) throw new InvalidOperationException($"ViGEm error 0x{result:X8}"); }
 }

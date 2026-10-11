@@ -1,0 +1,29 @@
+[
+  {
+    "Service": "VCRuntime",
+    "IsRuntime": true,
+    "Version": "14.30.30704.0",
+    "PublisherPattern": "Microsoft Corporation",
+    "FileName": "VC_redist.x64.exe",
+    "Url": "https://download.visualstudio.microsoft.com/download/pr/2250605e-e48f-43ed-ba6e-e0cc18bc530d/A9F5D2EAF67BF0DB0178B6552A71C523C707DF0E2CC66C06BFBC08BDC53387E7/VC_redist.x64.exe",
+    "Sha256": "A9F5D2EAF67BF0DB0178B6552A71C523C707DF0E2CC66C06BFBC08BDC53387E7"
+  },
+  {
+    "Service": "ViGEmBus",
+    "DisplayName": "ViGEm Bus Driver",
+    "Version": "1.22.0",
+    "PublisherPattern": "Nefarius",
+    "FileName": "ViGEmBus_1.22.0_x64_x86_arm64.exe",
+    "Url": "https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe",
+    "Sha256": "89220A7865076B342892F98865F3499FB7C4CFD673159E89D352C360FD014C6A"
+  },
+  {
+    "Service": "HidHide",
+    "DisplayName": "HidHide",
+    "Version": "1.5.230",
+    "PublisherPattern": "Nefarius",
+    "FileName": "HidHide_1.5.230_x64.exe",
+    "Url": "https://github.com/nefarius/HidHide/releases/download/v1.5.230.0/HidHide_1.5.230_x64.exe",
+    "Sha256": "F4BBBCB82E6258641B887C74BC81C4C5F66E4AA811808DFC304347687B7605F6"
+  }
+]

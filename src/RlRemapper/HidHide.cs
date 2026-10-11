@@ -57,7 +57,8 @@ internal static class HidHide
             string name = group.GetProperty("friendlyName").GetString() ?? "Controller";
             foreach (var entry in group.GetProperty("devices").EnumerateArray())
             {
-                if (!entry.GetProperty("present").GetBoolean()) continue;
+                if (!entry.GetProperty("present").GetBoolean() ||
+                    !entry.TryGetProperty("gamingDevice", out var gaming) || !gaming.GetBoolean()) continue;
                 string? path = entry.GetProperty("deviceInstancePath").GetString();
                 if (string.IsNullOrWhiteSpace(path)) continue;
                 // Same virtual VID/PID filter as the SDL input side; never offer our virtual controller.
@@ -74,18 +75,48 @@ internal static class HidHide
         string exe = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "RlRemapper.exe"));
         if (!Run("--app-list").Split('\n').Any(line => line.Trim().Equals($"--app-reg \"{exe}\"", StringComparison.OrdinalIgnoreCase)))
             throw new InvalidOperationException("Remapper is not whitelisted in HidHide. Rerun setup before hiding any device.");
-        if (!Run("--dev-list").Split('\n').Any(line => line.Trim().Equals($"--dev-hide \"{path}\"", StringComparison.OrdinalIgnoreCase)))
-            Run("--dev-hide", path);
-        if (!Run("--dev-list").Contains($"--dev-hide \"{path}\"", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("HidHide did not register the selected device.");
+        foreach (string hidePath in ControllerDeviceTree.HidePaths(path))
+        {
+            if (!Run("--dev-list").Split('\n').Any(line => line.Trim().Equals($"--dev-hide \"{hidePath}\"", StringComparison.OrdinalIgnoreCase)))
+                Run("--dev-hide", hidePath);
+            if (!Run("--dev-list").Split('\n').Any(line => line.Trim().Equals($"--dev-hide \"{hidePath}\"", StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException("HidHide did not register the selected gamepad interface.");
+        }
         Run("--cloak-on");
         if (!Run("--cloak-state").Contains("--cloak-on", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("HidHide did not enable device hiding.");
     }
+    public static void PrepareDisconnected(string path)
+    {
+        string exe = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "RlRemapper.exe"));
+        if (!Run("--app-list").Split('\n').Any(line => line.Trim().Equals($"--app-reg \"{exe}\"", StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException("Remapper is not allowlisted. Rerun setup.");
+        if (string.IsNullOrWhiteSpace(path) || !Run("--dev-list").Split('\n').Any(line => line.Trim().Equals($"--dev-hide \"{path}\"", StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException("First connect the controller and use Start once to configure hiding. Then Stop, unplug it and use Prepare Player 1.");
+        foreach (string hidePath in ControllerDeviceTree.HidePaths(path))
+            if (!Run("--dev-list").Split('\n').Any(line => line.Trim().Equals($"--dev-hide \"{hidePath}\"", StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException("Controller hiding is incomplete. Connect it and use Start first.");
+        Run("--cloak-on");
+    }
+    public static void ConfigureReconnected(string savedPath)
+    {
+        var savedPaths = ControllerDeviceTree.HidePaths(savedPath);
+        var matches = GamingDevices().Where(device => ControllerDeviceTree.HidePaths(device.Path)
+            .Intersect(savedPaths, StringComparer.OrdinalIgnoreCase).Any()).ToArray();
+        if (matches.Length != 1) throw new InvalidOperationException("Reconnect the previously selected controller, then Stop and Start again if necessary.");
+        Configure(matches[0].Path);
+    }
     public static void Unhide(string path)
     {
         // Never disable the global cloak: other applications may use HidHide too.
-        if (Run("--dev-list").Contains($"--dev-hide \"{path}\"", StringComparison.OrdinalIgnoreCase))
-            Run("--dev-unhide", path);
+        var paths = ControllerDeviceTree.HidePaths(path).ToList();
+        foreach (var device in GamingDevices())
+        {
+            var currentPaths = ControllerDeviceTree.HidePaths(device.Path);
+            if (currentPaths.Intersect(paths, StringComparer.OrdinalIgnoreCase).Any()) paths.AddRange(currentPaths);
+        }
+        foreach (string hidePath in paths.Distinct(StringComparer.OrdinalIgnoreCase))
+            if (Run("--dev-list").Split('\n').Any(line => line.Trim().Equals($"--dev-hide \"{hidePath}\"", StringComparison.OrdinalIgnoreCase)))
+                Run("--dev-unhide", hidePath);
     }
 }

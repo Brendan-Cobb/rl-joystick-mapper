@@ -3,3 +3,7 @@
 .vs/
 publish/
 *.user
+build/tools/
+installer/Drivers/
+installer/Output/
+artifacts/

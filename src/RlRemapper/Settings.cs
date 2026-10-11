@@ -17,7 +17,7 @@ public sealed class Settings
     [Category("Controller")] public int RightTriggerAxis { get; set; } = 5;
     [Category("Controller")][ReadOnly(true)][Description("Set with Select physical device. HidHide hides only this device.")] public string DevicePath { get; set; } = "";
     [Category("Performance")] public int PollRateHz { get; set; } = 1000;
-    [Category("Buttons")][Description("One physical index=virtual name per line; names: a b x y lb rb back start l3 r3 guide dpad_up dpad_down dpad_left dpad_right none")]
+    [Browsable(false)]
     public string ButtonMappings { get; set; } = "0=a\n1=b\n2=x\n3=y\n4=lb\n5=rb\n6=back\n7=start\n8=l3\n9=r3";
 
     public static string PathOnDisk => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RlRemapper", "settings.json");

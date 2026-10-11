@@ -29,6 +29,14 @@ internal sealed class MainForm : Form
             catch (Exception e) { MessageBox.Show(e.Message, "Invalid settings"); }
         };
         var detect = new Button { Text = "Inspect controller", AutoSize = true };
+        var remap = new Button { Text = "Remap controls", AutoSize = true };
+        remap.Click += (_, _) => {
+            if (task is { IsCompleted: false }) { MessageBox.Show("Stop remapping before editing controls."); return; }
+            using var editor = new ControlMappingForm(current);
+            if (editor.ShowDialog(this) != DialogResult.OK) return;
+            try { editor.Result.Save(); current = editor.Result; grid.SelectedObject = current; Volatile.Write(ref active, current.Snapshot()); state.Text = "Control mappings saved"; }
+            catch (Exception error) { MessageBox.Show(error.Message, "Could not save mappings"); }
+        };
         detect.Click += (_, _) => Inspect();
         var select = new Button { Text = "Select physical device", AutoSize = true };
         select.Click += (_, _) => SelectDevice();
@@ -39,8 +47,10 @@ internal sealed class MainForm : Form
             catch (Exception e) { MessageBox.Show(e.Message); }
         };
         start.Click += (_, _) => Start();
+        var prepare = new Button { Text = "Prepare Player 1", AutoSize = true };
+        prepare.Click += (_, _) => Start(true);
         stop.Click += (_, _) => cancellation?.Cancel();
-        bar.Controls.AddRange(new Control[] { start, stop, save, select, unhide, detect, state });
+        bar.Controls.AddRange(new Control[] { start, prepare, stop, remap, save, select, unhide, detect, state });
         Controls.Add(grid); Controls.Add(bar);
         active = current.Snapshot();
     }
@@ -62,20 +72,29 @@ internal sealed class MainForm : Form
         }
         catch (Exception e) { MessageBox.Show(e.Message, "Controller selection failed"); }
     }
-    void Start()
+    void Start(bool preparePlayerOne = false)
     {
+        if (task is { IsCompleted: false }) { MessageBox.Show("Stop remapping first."); return; }
         try { current.Validate(); current.Save(); Volatile.Write(ref active, current.Snapshot()); }
         catch (Exception e) { MessageBox.Show(e.Message); return; }
         try
         {
-            if (string.IsNullOrEmpty(current.DevicePath))
+            var candidates = HidHide.GamingDevices();
+            if (preparePlayerOne)
             {
-                var candidates = HidHide.GamingDevices();
-                if (candidates.Count != 1) throw new InvalidOperationException("Select the physical device before starting (automatic selection requires exactly one candidate).");
+                if (candidates.Count != 0) throw new InvalidOperationException("Close Rocket League, unplug the physical controller, then click Prepare Player 1. Reconnect it once the virtual controller is ready.");
+                HidHide.PrepareDisconnected(current.DevicePath);
+            }
+            else
+            {
+            if (!candidates.Any(device => device.Path.Equals(current.DevicePath, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (candidates.Count != 1) throw new InvalidOperationException("Select the physical gamepad before starting (automatic selection requires exactly one candidate). The saved selection may be an old or non-gamepad interface.");
                 current.DevicePath = candidates[0].Path;
                 current.Save(); grid.Refresh(); Volatile.Write(ref active, current.Snapshot());
             }
             HidHide.Configure(current.DevicePath);
+            }
         }
         catch (Exception e) { MessageBox.Show(e.Message, "HidHide setup failed"); return; }
         cancellation = new CancellationTokenSource();
@@ -83,7 +102,7 @@ internal sealed class MainForm : Form
         start.Enabled = false; stop.Enabled = true;
         task = Task.Run(() => new Runner(() => Volatile.Read(ref active), text => {
             if (!IsDisposed && IsHandleCreated) BeginInvoke(() => state.Text = text);
-        }).Run(ct));
+        }, preparePlayerOne).Run(ct));
         task.ContinueWith(t => {
             if (IsDisposed || !IsHandleCreated) return;
             BeginInvoke(() => { state.Text = t.Exception?.GetBaseException().Message ?? "Stopped"; start.Enabled = true; stop.Enabled = false; });
