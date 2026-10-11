@@ -72,8 +72,7 @@ internal sealed class Runner
                     if (js != IntPtr.Zero) status("Reconnected");
                     continue;
                 }
-                var (x, y) = Transform.Apply(Sdl.Axis(js, cfg.StickXAxis), Sdl.Axis(js, cfg.StickYAxis), cfg.InnerDeadzone, cfg.OuterRingThreshold, cfg.SnapAngleDeg);
-                (x, y) = Transform.Square(x, y);
+                var (x, y) = Transform.ApplyStick(Sdl.Axis(js, cfg.StickXAxis), Sdl.Axis(js, cfg.StickYAxis), cfg);
                 double rx = Sdl.Axis(js, cfg.RightStickXAxis), ry = Sdl.Axis(js, cfg.RightStickYAxis);
                 if (Math.Sqrt(rx * rx + ry * ry) < cfg.InnerDeadzone) rx = ry = 0;
                 var report = new XusbReport {

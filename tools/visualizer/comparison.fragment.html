@@ -1,0 +1,432 @@
+<!-- RLREMAPPER_VISUALIZER_START -->
+<div id="joystick-compare">
+  <style>
+    #joystick-compare { color:var(--foreground); }
+    #joystick-compare .jc-plots { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+    #joystick-compare .jc-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+    #joystick-compare .jc-plot { min-width:0; }
+    #joystick-compare .jc-plot h3 { margin-bottom:4px; }
+    #joystick-compare .jc-plot svg { display:block; width:100%; overflow:visible; touch-action:none; }
+    #joystick-compare .jc-plot svg text { fill:var(--foreground); font-size:12px; }
+    #joystick-compare .jc-readout { min-height:48px; }
+    #joystick-compare .jc-field { margin:12px 0; }
+    #joystick-compare .jc-field label { display:flex; justify-content:space-between; gap:12px; }
+    #joystick-compare .jc-swatch { display:inline-block; width:16px; height:3px; vertical-align:middle; margin-right:6px; }
+    #joystick-compare details { margin:12px 0; }
+    #joystick-compare summary { color:var(--foreground); }
+    #joystick-compare .jc-muted { color:var(--muted-foreground); }
+    #joystick-compare .jc-legend { display:flex; flex-wrap:wrap; gap:16px; margin:8px 0; }
+    #joystick-compare .jc-legend button { font:inherit; color:var(--foreground); background:transparent; border:0; padding:0; }
+    #joystick-compare .jc-grid-settings { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 16px; }
+    #joystick-compare .jc-head { padding-right:94px; }
+    #joystick-compare .jc-tooltip { position:absolute; pointer-events:none; z-index:1; max-width:min(280px,100%); white-space:normal; }
+    #joystick-compare .jc-transfer { position:relative; }
+    #joystick-compare .jc-transfer svg { touch-action:pan-y; }
+    @media(max-width:700px) { #joystick-compare .jc-plots { grid-template-columns:1fr; } #joystick-compare .jc-pair { grid-template-columns:1fr; } }
+    @media(max-width:420px) { #joystick-compare .jc-grid-settings { grid-template-columns:1fr; } }
+  </style>
+  <h2 class="jc-head">Joystick input → output</h2>
+  <div class="viz-controls">
+    <label class="form-label">Comparison
+      <select class="form-select" id="jc-preset">
+        <option value="focus">Exterior mapping · matched settings</option>
+        <option value="center">Center recovery · matched exterior</option>
+        <option value="defaults">Decoupled defaults · matched DS4</option>
+        <option value="asymmetric">Separate X / Y strips</option>
+        <option value="custom">Custom settings</option>
+      </select>
+    </label>
+    <label class="form-label">Plot view
+      <select class="form-select" id="jc-view"><option value="output">Mapped input ring</option><option value="regions">Input deadzone &amp; cardinal regions</option></select>
+    </label>
+    <label class="form-label">Plot scale<select class="form-select" id="jc-zoom"><option value="1">Full travel · ±1</option><option value="0.3">Center detail · ±0.3</option></select></label>
+  </div>
+  <div class="jc-pair">
+    <div class="jc-field"><label class="form-label" for="jc-radius">Input radius <output id="jc-radius-value" class="tabular-nums"></output></label><input id="jc-radius" class="form-range" type="range" min="0" max="1" step="0.001" value="0.65"></div>
+    <div class="jc-field"><label class="form-label" for="jc-angle">Input angle · E = 0°, N = 90° <output id="jc-angle-value" class="tabular-nums"></output></label><input id="jc-angle" class="form-range" type="range" min="-180" max="180" step="0.1" value="25"></div>
+  </div>
+  <div class="jc-plots">
+    <section class="jc-plot"><h3>Raw input · drag to move</h3><svg id="jc-raw" class="cursor-interaction" role="img" aria-label="Raw input plane. Drag to change the joystick position, or use the radius and angle sliders."></svg><div id="jc-raw-value" class="jc-readout text-small tabular-nums"></div></section>
+    <section class="jc-plot"><h3>DS4Windows</h3><svg id="jc-ds4" role="img" aria-label="DS4Windows joystick mapping"></svg><div id="jc-ds4-value" class="jc-readout text-small tabular-nums"></div></section>
+    <section class="jc-plot"><h3>Updated remapper</h3><svg id="jc-rl" role="img" aria-label="Updated remapper DecoupledAxial left stick mapping"></svg><div id="jc-rl-value" class="jc-readout text-small tabular-nums"></div></section>
+  </div>
+  <div class="jc-legend text-small" id="jc-map-legend"></div>
+  <div id="jc-selection" class="text-small tabular-nums" aria-live="polite"></div>
+  <hr>
+  <div class="jc-pair">
+    <section><h3>DS4Windows settings</h3>
+      <label class="form-label">Deadzone type<select class="form-select" id="jc-mode"><option value="axial">Axial · rectangular center + cardinal strips</option><option value="radial">Radial · circular center</option></select></label>
+      <div id="jc-ds-dead"></div>
+      <label class="form-check"><input class="form-check-input" id="jc-square" type="checkbox"><span class="form-check-label">Square Stick</span></label>
+      <div id="jc-roundness-field" class="jc-field"><label class="form-label" for="jc-roundness">Square roundness <span class="jc-muted">0–1000</span></label><input class="form-control" id="jc-roundness" type="number" min="0" max="1000" step="0.1" value="5" data-tooltip="0 applies full circle-to-square scaling at every radius. Higher values concentrate expansion near the rim."></div>
+      <details><summary class="cursor-interaction">More DS4Windows settings</summary><div id="jc-ds-advanced"></div>
+        <label class="form-label">Output curve<select id="jc-curve" class="form-select"><option value="0">Linear</option><option value="1">Enhanced precision</option><option value="2">Quadratic</option><option value="3">Cubic</option><option value="4">Ease-out quadratic</option><option value="5">Ease-out cubic</option></select></label>
+      </details>
+    </section>
+    <section><h3>Remapper · DecoupledAxial</h3><div id="jc-rl-controls"></div>
+      <label class="form-check"><input class="form-check-input" id="jc-rl-square" type="checkbox"><span class="form-check-label">Square Stick</span></label>
+      <div id="jc-rl-roundness-field" class="jc-field"><label class="form-label" for="jc-rl-roundness">Square roundness <span class="jc-muted">0–1000</span></label><input class="form-control" id="jc-rl-roundness" type="number" min="0" max="1000" step="0.1" value="0" data-tooltip="0 applies full squaring at every radius. Higher values retain a rounder center."></div>
+      <details><summary class="cursor-interaction">X / Y output settings</summary><div id="jc-rl-advanced"></div></details>
+      <div class="text-small jc-muted">Left stick · Linear response</div>
+    </section>
+  </div>
+  <div id="jc-error" role="alert" class="text-destructive" hidden></div>
+  <hr>
+  <div class="jc-pair">
+    <section class="jc-plot jc-transfer"><h3>Angle response · selected radius</h3><svg id="jc-angle-chart" role="img" aria-label="Input angle versus output angle at the selected radius"></svg></section>
+    <section class="jc-plot jc-transfer"><h3>Travel response · selected angle</h3><svg id="jc-travel-chart" role="img" aria-label="Input radius versus largest absolute output axis at the selected angle"></svg></section>
+  </div>
+  <div class="jc-legend text-small" id="jc-series-legend"></div>
+  <div class="text-small jc-muted">Normalized axes · DS4 byte quantization included · Remapper floating point → signed 16-bit · Other DS4 transforms disabled</div>
+  <div class="jc-tooltip tooltip" role="tooltip" hidden></div>
+</div>
+<script>
+// Static mapping port; DS4Windows portions GPL-3.0-or-later, Copyright (C) 2023 Travis Nickles.
+// DS4Windows 43c4aed: Mapping.cs, Xbox360OutDevice.cs. Remapper: current Transform.ApplyStick DecoupledAxial implementation.
+globalThis.JoystickCompare = (() => {
+  const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+  const byte=v=>Math.trunc(clamp(v,0,255));
+  const cap=v=>v>=128?127:128;
+  const rawByte=v=>Math.round(128+clamp(v,-1,1)*(v>=0?127:128));
+  const normalize=v=>(v-128)/cap(v);
+  function axis(v,c) {
+    if(c.deadzone===0 && c.antiDeadzone===0 && c.maxZone===100 && c.maxOutput===100) return v;
+    if(c.deadzone>0 && Math.abs(v-128)<=c.deadzone) return 128;
+    const side=v>=128?127:-128, ratio=c.maxZone/100;
+    const dead=c.deadzone/127*side;
+    let t=(clamp(v,128-128*ratio,128+127*ratio)-128-dead)/((ratio*side+128-128)-dead);
+    if(c.maxOutput!==100) t=clamp(t,0,Math.min(c.maxOutput/100/0.99,1));
+    return t>0?byte(((1-c.antiDeadzone*.01)*t+c.antiDeadzone*.01)*side+128):128;
+  }
+  function squareDS4(x,y,roundness) {
+    let angle=Math.atan2(y,-x)+Math.PI, co=Math.cos(angle), scale;
+    const p=Math.PI/4;
+    if(angle<=p || angle>7*p) scale=1/co;
+    else if(angle<=3*p) scale=1/Math.sin(angle);
+    else if(angle<=5*p) scale=-1/co;
+    else scale=-1/Math.sin(angle);
+    const factor=Math.pow(x/co,roundness);
+    return [clamp(x+(x*scale-x)*factor,-1,1),clamp(y+(y*scale-y)*factor,-1,1)];
+  }
+  function ds4(x,y,c) {
+    const raw=[rawByte(x),rawByte(-y)]; let [bx,by]=raw;
+    if(c.mode==='axial') { bx=axis(bx,c.xAxis); by=axis(by,c.yAxis); }
+    else {
+      const interpret=c.antiDeadzone>0 || c.maxZone!==100 || c.maxOutput!==100 || c.maxOutputForce || c.verticalScale!==100;
+      if(c.deadzone>0 || interpret) {
+        const r2=(bx-128)**2+(by-128)**2;
+        if(c.deadzone>0 && r2<=c.deadzone**2) bx=by=128;
+        else {
+          const angle=Math.atan2(-(by-128),bx-128), dir=[Math.abs(Math.cos(angle)),Math.abs(Math.sin(angle))];
+          const vals=[bx,by].map((v,i)=>{
+            const side=v>=128?127:-128, ratio=c.maxZone/100;
+            const dead=dir[i]*(c.deadzone/127)*side;
+            let t=(clamp(v,128-128*ratio,128+127*ratio)-128-dead)/((ratio*side+128-128)-dead);
+            if(i===1 && c.verticalScale!==100) t=clamp(t*c.verticalScale/100,0,1);
+            if(c.maxOutput!==100 || c.maxOutputForce) t=clamp(t,0,Math.min(dir[i]*c.maxOutput/100/0.99,1));
+            const anti=(c.antiDeadzone*.01)*dir[i];
+            return t>0?byte(((1-anti)*t+anti)*side+128):128;
+          }); [bx,by]=vals;
+        }
+      }
+    }
+    if(c.square && (bx!==128 || by!==128)) {
+      const cx=cap(bx),cy=cap(by);
+      const p=squareDS4((bx-128)/cx,(by-128)/cy,c.roundness);
+      bx=byte(p[0]*cx+128); by=byte(p[1]*cy+128);
+    }
+    if(c.curve>0 && (bx!==128 || by!==128)) {
+      const angle=Math.atan2(-(by-128),bx-128);
+      const caps=c.mode==='radial'?[Math.max(Math.abs(Math.cos(angle))*cap(bx),Math.abs(bx-128)),Math.max(Math.abs(Math.sin(angle))*cap(by),Math.abs(by-128))]:[cap(bx),cap(by)];
+      [bx,by]=[bx,by].map((v,i)=>{
+        const t=caps[i]>0?(v-128)/caps[i]:0,a=Math.abs(t); let z=a;
+        if(c.curve===1) z=a<=.4?.8*a:a<=.75?a-.08:1.32*a-.32;
+        else if(c.curve===2) z=a*a;
+        else if(c.curve===3) z=a*a*a;
+        else if(c.curve===4) z=-a*(a-2);
+        else if(c.curve===5) z=(a-1)**3+1;
+        return byte(z*(t>=0?1:-1)*caps[i]+128);
+      });
+    }
+    const out=[normalize(bx),-normalize(by)];
+    return {rawBytes:raw,bytes:[bx,by],out,stick:[axisScale(bx,false),axisScale(by,true)]};
+  }
+  function axisScale(v,flip) {
+    const f=Math.fround,delta=v-128;
+    let t=f(delta*f(1/(delta>=0?127:128)));
+    if(flip)t=-t;
+    t=f(f(t+1)*.5);
+    return Math.trunc(f(f(t*65535)-32768));
+  }
+  function rl(x,y,c) {
+    y=-y; const r=Math.sqrt(x*x+y*y);
+    if(r<c.inner || r===0) return {out:[0,0],stick:[0,0]};
+    if(r>=c.outer) {
+      const a=Math.atan2(y,x)*180/Math.PI,t=c.threshold;
+      if(Math.abs(a-90)<=t) {x=0;y=r;}
+      else if(Math.abs(a+90)<=t) {x=0;y=-r;}
+      else if(Math.abs(a)<=t) {x=r;y=0;}
+      else if(Math.abs(Math.abs(a)-180)<=t) {x=-r;y=0;}
+      else {
+        const scale=90/(90-2*t);
+        const mapped=a>0?(a<90?(a-t)*scale:90+(a-90-t)*scale):(a>-90?(a+t)*scale:-90+(a+90+t)*scale);
+        const rad=mapped*Math.PI/180; x=Math.cos(rad)*r;y=Math.sin(rad)*r;
+      }
+    }
+    if(x!==0 && y!==0) { const k=Math.sqrt(x*x+y*y)/Math.max(Math.abs(x),Math.abs(y)); x*=k;y*=k; }
+    const out=[clamp(x,-1,1),clamp(-y,-1,1)];
+    return {out,stick:out.map(v=>Math.trunc(v*32767))};
+  }
+  function decoupled(x,y,c) {
+    if(!Number.isFinite(x)||!Number.isFinite(y)) return {out:[0,0],stick:[0,0]};
+    x=clamp(x,-1,1);y=clamp(y,-1,1);
+    const radius=Math.sqrt(x*x+y*y);
+    if(radius<=c.innerDeadzone||radius===0) return {out:[0,0],stick:[0,0]};
+    const ux=Math.abs(x)/radius,uy=Math.abs(y)/radius,band=c.centerBlendWidth;
+    const rectangleRadius=Math.min(ux>0?(c.xSnapWidth+band)/ux:Infinity,uy>0?(c.ySnapWidth+band)/uy:Infinity);
+    const transitionRadius=Math.max(c.innerDeadzone+band,rectangleRadius);
+    const travel=(v,strip,zone)=>clamp((v-strip)/(zone-strip),0,1);
+    let ax,ay,antiWeightX=1,antiWeightY=1;
+    if(radius>=transitionRadius) {
+      ax=travel(Math.abs(x),c.xSnapWidth,c.xMaxZone);ay=travel(Math.abs(y),c.ySnapWidth,c.yMaxZone);
+    } else {
+      const bx=travel(transitionRadius*ux,c.xSnapWidth,c.xMaxZone),by=travel(transitionRadius*uy,c.ySnapWidth,c.yMaxZone);
+      const boundaryLength=Math.sqrt(bx*bx+by*by),t=(radius-c.innerDeadzone)/(transitionRadius-c.innerDeadzone),blend=t*t*(3-2*t),remaining=1-blend;
+      const contributionX=bx+remaining*ux,contributionY=by+remaining*uy;
+      antiWeightX=contributionX>0?remaining+blend*bx/contributionX:0;
+      antiWeightY=contributionY>0?remaining+blend*by/contributionY:0;
+      const vx=ux+(bx/boundaryLength-ux)*blend,vy=uy+(by/boundaryLength-uy)*blend;
+      const directionLength=Math.sqrt(vx*vx+vy*vy),magnitude=t*boundaryLength;
+      ax=magnitude*vx/directionLength;ay=magnitude*vy/directionLength;
+    }
+    const response=(v,anti,max)=>{if(max!==1)v=Math.min(v,Math.min(max/.99,1));return v>0?anti+(1-anti)*v:0;};
+    ax=response(ax,c.xAntiDeadzone*antiWeightX,c.xMaxOutput)*Math.sign(x);
+    ay=response(ay,c.yAntiDeadzone*antiWeightY,c.yMaxOutput)*Math.sign(y);
+    if(c.squareStick&&ax!==0&&ay!==0) {
+      const r=Math.sqrt(ax*ax+ay*ay),expansion=r/Math.max(Math.abs(ax),Math.abs(ay)),scale=1+(expansion-1)*Math.pow(r,c.squareRoundness);
+      ax=clamp(ax*scale,-1,1);ay=clamp(ay*scale,-1,1);
+    }
+    const out=[clamp(ax,-1,1),clamp(ay,-1,1)];
+    return {out,stick:out.map(v=>Math.trunc(v*32767))};
+  }
+  return {ds4,rl,decoupled,rawByte,axisScale};
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script>
+(() => {
+  const root=document.getElementById('joystick-compare'), $=id=>root.querySelector('#jc-'+id), M=globalThis.JoystickCompare;
+  const S1='var(--viz-series-1)',S2='var(--viz-series-2)',neutral='var(--border)',ink='var(--foreground)';
+  const clone=v=>JSON.parse(JSON.stringify(v)), deg=Math.PI/180;
+  const axisDefault=()=>({deadzone:20,antiDeadzone:0,maxZone:50,maxOutput:100});
+  function makeState(preset='focus') {
+    const ds4={mode:'axial',deadzone:13,antiDeadzone:0,maxZone:100,maxOutput:100,verticalScale:100,maxOutputForce:false,square:true,roundness:0,curve:0,xAxis:axisDefault(),yAxis:axisDefault()};
+    const rl={innerDeadzone:.1,xSnapWidth:20/127,ySnapWidth:20/127,centerBlendWidth:.05,xAntiDeadzone:0,yAntiDeadzone:0,xMaxZone:.5,yMaxZone:.5,xMaxOutput:1,yMaxOutput:1,squareStick:true,squareRoundness:0};
+    let radius=.7287949045956205,angle=-129.84035797054716,zoom=1;
+    if(preset==='center') {radius=.15;angle=40;zoom=.3;}
+    if(preset==='defaults') {ds4.xAxis.deadzone=ds4.yAxis.deadzone=13;ds4.xAxis.maxZone=ds4.yAxis.maxZone=100;rl.innerDeadzone=.05;rl.xSnapWidth=rl.ySnapWidth=.1;rl.xMaxZone=rl.yMaxZone=1;radius=.12;angle=35;zoom=.3;}
+    if(preset==='asymmetric') {ds4.xAxis.deadzone=10;ds4.yAxis.deadzone=25;rl.xSnapWidth=10/127;rl.ySnapWidth=25/127;rl.innerDeadzone=.04;radius=.2;angle=40;zoom=.3;}
+    return {version:2,preset,view:'output',zoom,radius,angle,ds4,rl,visible:{raw:true,ds4:true,rl:true}};
+  }
+  let state=makeState('center'), frame=0, chartRows={}, drag=false;
+  function applySaved(saved) {
+    const s=saved?.privateContent?.state;
+    if(!s || s.version!==2 || !s.ds4 || !s.rl) return false;
+    state={...makeState(),...clone(s)};return true;
+  }
+  applySaved(window.openai?.widgetState);
+  function persist() {
+    if(window.openai?.setWidgetState) window.openai.setWidgetState({modelContent:{input:{radius:state.radius,angle:state.angle},ds4:state.ds4,remapper:{mappingMode:'DecoupledAxial',...state.rl},preset:state.preset,view:state.view,plotScale:state.zoom},privateContent:{state}}).catch(()=>{});
+  }
+  function changed() {state.preset='custom';$('preset').value='custom';schedule();}
+  function range(parent,id,label,min,max,step,value,format,onChange,tip) {
+    const field=document.createElement('div');field.className='jc-field';
+    const lab=document.createElement('label');lab.className='form-label';lab.htmlFor='jc-'+id;
+    const name=document.createElement('span');name.textContent=label;
+    const out=document.createElement('output');out.className='tabular-nums';out.textContent=format(value);
+    lab.append(name,out);if(tip)lab.dataset.tooltip=tip;
+    const input=document.createElement('input');Object.assign(input,{type:'range',min,max,step,value,id:'jc-'+id,className:'form-range'});
+    input.addEventListener('input',()=>{const n=Number(input.value);out.textContent=format(n);onChange(n);changed();});input.addEventListener('change',persist);
+    field.append(lab,input);parent.append(field);return input;
+  }
+  const pct=v=>(v/100).toFixed(2),dz=v=>(v/127).toFixed(3)+' ('+v+'/127)',fixed=v=>v.toFixed(3);
+  function settings() {
+    const d=state.ds4; $('mode').value=d.mode;$('square').checked=d.square;$('roundness').value=d.roundness;$('roundness-field').hidden=!d.square;$('curve').value=d.curve;
+    $('preset').value=state.preset;$('view').value=state.view;$('zoom').value=state.zoom;
+    const dead=$('ds-dead'),advanced=$('ds-advanced');dead.replaceChildren();advanced.replaceChildren();
+    const dzTip='Axis cutoff, in DS4 byte steps. Axial deadzones also set cardinal strip width and rescale each surviving axis.';
+    if(d.mode==='axial') {
+      for(const [key,label] of [['xAxis','X'],['yAxis','Y']]) range(dead,'dead-'+key,label+' deadzone',0,127,1,d[key].deadzone,dz,v=>d[key].deadzone=v,dzTip);
+      const grid=document.createElement('div');grid.className='jc-grid-settings';advanced.append(grid);
+      for(const [key,label] of [['xAxis','X axis'],['yAxis','Y axis']]) {
+        const col=document.createElement('div');grid.append(col);
+        for(const [prop,name,tip] of [['antiDeadzone','Anti-deadzone','Adds a nonzero output floor after the axis deadzone.'],['maxZone','Max zone','Input axis travel that reaches full scale, before the output cap and anti-deadzone. Must exceed the deadzone.'],['maxOutput','Max output','Caps the rescaled axis BEFORE anti-deadzone; it is not always the final output ceiling.']]) range(col,key+'-'+prop,label+' · '+name,0,100,1,d[key][prop],pct,v=>d[key][prop]=v,tip);
+      }
+    } else {
+      range(dead,'dead-radial','Radial deadzone',0,127,1,d.deadzone,dz,v=>d.deadzone=v,'Circular center cutoff, followed by direction-weighted component rescaling.');
+      for(const [prop,name,tip] of [['antiDeadzone','Anti-deadzone','Adds an angle-weighted minimum output after deadzone processing.'],['maxZone','Max zone','Per-axis saturation input, before output limiting and anti-deadzone. Must exceed the deadzone.'],['maxOutput','Max output','Angle-weighted cap before anti-deadzone. A 100% cap is skipped unless Force is enabled.']]) range(advanced,prop,name,0,100,1,d[prop],pct,v=>d[prop]=v,tip);
+      range(advanced,'verticalScale','Vertical scale',0,400,1,d.verticalScale,pct,v=>d.verticalScale=v,'Scales the vertical component before max-output and anti-deadzone processing.');
+      const lab=document.createElement('label');lab.className='form-check';
+      const input=document.createElement('input');input.type='checkbox';input.className='form-check-input';input.checked=d.maxOutputForce;input.addEventListener('change',()=>{d.maxOutputForce=input.checked;changed();persist();});
+      const span=document.createElement('span');span.className='form-check-label';span.textContent='Force max-output limit';lab.append(input,span);advanced.append(lab);
+    }
+    const rem=$('rl-controls'),r=state.rl;rem.replaceChildren();
+    range(rem,'inner','Inner deadzone',0,.99,.001,r.innerDeadzone,fixed,v=>r.innerDeadzone=v,'Circular zero-output region, independent of the axial strips.');
+    range(rem,'x-strip','X snap width · north/south',0,.99,.001,r.xSnapWidth,fixed,v=>r.xSnapWidth=v,'Suppresses X in a constant-width vertical strip outside the center transition.');
+    range(rem,'y-strip','Y snap width · east/west',0,.99,.001,r.ySnapWidth,fixed,v=>r.ySnapWidth=v,'Suppresses Y in a constant-width horizontal strip outside the center transition.');
+    range(rem,'blend','Center blend width',.000001,1,.001,r.centerBlendWidth,fixed,v=>r.centerBlendWidth=v,'Transition around the strip overlap and inner circle. Restores diagonal movement near center and converges to ordinary axial mapping.');
+    $('rl-square').checked=r.squareStick;$('rl-roundness').value=r.squareRoundness;$('rl-roundness-field').hidden=!r.squareStick;
+    const advancedRL=$('rl-advanced');advancedRL.replaceChildren();
+    const gridRL=document.createElement('div');gridRL.className='jc-grid-settings';advancedRL.append(gridRL);
+    for(const [key,label] of [['x','X axis'],['y','Y axis']]) {
+      const col=document.createElement('div');gridRL.append(col);
+      for(const [prop,name,tip] of [['AntiDeadzone','Anti-deadzone','Minimum active output, fading for components that become zero at a cardinal strip.'],['MaxZone','Max zone','Input travel reaching full scaled output. Must leave space for the center blend.'],['MaxOutput','Max output','Cap before anti-deadzone and squaring; later stages can raise final output above this value.']]) range(col,'rl-'+key+prop,label+' · '+name,0,1,.001,r[key+prop],fixed,v=>r[key+prop]=v,tip);
+    }
+  }
+  function valid() {
+    const d=state.ds4,axes=d.mode==='axial'?[d.xAxis,d.yAxis]:[d];
+    const r=state.rl;let error='';
+    if(!axes.every(c=>c.maxZone/100>c.deadzone/127)) error='Set DS4 Max zone above its deadzone.';
+    else if(r.xSnapWidth+r.centerBlendWidth>=r.xMaxZone||r.ySnapWidth+r.centerBlendWidth>=r.yMaxZone||r.innerDeadzone+r.centerBlendWidth>=Math.min(r.xMaxZone,r.yMaxZone)) error='Remapper: snap width + blend width must be below the matching max zone; inner deadzone + blend width must be below both max zones.';
+    $('error').hidden=!error;$('error').textContent=error;
+    return !error;
+  }
+  function inputPoint(r=state.radius,a=state.angle) {return [r*Math.cos(a*deg),r*Math.sin(a*deg)];}
+  function angleOf(p) {return Math.hypot(...p)<1e-10?null:Math.atan2(p[1],p[0])/deg;}
+  const maxOf=p=>Math.max(Math.abs(p[0]),Math.abs(p[1]));
+  function info(p) {const a=angleOf(p);return 'X '+p[0].toFixed(3)+' · Y '+p[1].toFixed(3)+'<br>'+(a===null?'Centered':a.toFixed(1)+'°')+' · radius '+Math.hypot(...p).toFixed(3);}
+  function svgEl(tag,attrs={},parent) {const el=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,v);if(parent)parent.append(el);return el;}
+  function text(svg,x,y,value,attrs={}) {const el=svgEl('text',{x,y,...attrs},svg);el.textContent=value;return el;}
+  function geometry(svg) {
+    const width=svg.parentElement.getBoundingClientRect().width,left=64,right=20,top=18,bottom=46,size=Math.min(width-left-right,300),height=top+size+bottom;
+    svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.setAttribute('height',height);
+    const l=left+(width-left-right-size)/2,t=top,z=state.zoom;
+    const X=v=>l+size*(v/z+1)/2,Y=v=>t+size*(1-v/z)/2;
+    return {width,height,size,l,t,X,Y};
+  }
+  function plane(svg,kind) {
+    svg.replaceChildren(); const g=geometry(svg),{X,Y,l,t,size,width,height}=g;
+    const title=svgEl('title',{},svg);title.textContent=kind==='raw'?'Normalized joystick input':kind==='ds4'?'DS4Windows '+state.view:'DecoupledAxial '+state.view;
+    svgEl('rect',{x:l,y:t,width:size,height:size,fill:'none',stroke:neutral,'data-chart-frame':''},svg);
+    const defs=svgEl('defs',{},svg),clip=svgEl('clipPath',{id:'jc-clip-'+kind},defs);
+    svgEl('rect',{x:l,y:t,width:size,height:size},clip);
+    const plot=svgEl('g',{'clip-path':'url(#jc-clip-'+kind+')'},svg),z=state.zoom;
+    if(kind!=='raw' && state.view==='regions') {
+      const n=61,fn=kind==='ds4'?M.ds4:M.decoupled,cfg=kind==='ds4'?state.ds4:state.rl,color=kind==='ds4'?S1:S2;
+      for(let j=0;j<n;j++)for(let i=0;i<n;i++) {
+        const x=z*(-1+2*(i+.5)/n),y=z*(-1+2*(j+.5)/n);if(x*x+y*y>1)continue;
+        const p=fn(x,y,cfg).out,zero=Math.abs(p[0])<1e-10&&Math.abs(p[1])<1e-10,card=Math.abs(p[0])<1e-10||Math.abs(p[1])<1e-10;
+        if(zero||card)svgEl('rect',{x:X(x)-size/n/2,y:Y(y)-size/n/2,width:size/n+.15,height:size/n+.15,fill:zero?'var(--muted-foreground)':color,opacity:zero?.3:.22},plot);
+      }
+      if(kind==='rl') {
+        const c=state.rl;
+        const boundary=Array.from({length:361},(_,i)=>{const a=i*deg,ux=Math.abs(Math.cos(a)),uy=Math.abs(Math.sin(a)),r=Math.max(c.innerDeadzone+c.centerBlendWidth,Math.min(ux>0?(c.xSnapWidth+c.centerBlendWidth)/ux:Infinity,uy>0?(c.ySnapWidth+c.centerBlendWidth)/uy:Infinity));return [r*Math.cos(a),r*Math.sin(a)];});
+        svgEl('path',{d:boundary.map((p,i)=>(i?'L':'M')+X(p[0])+','+Y(p[1])).join(''),fill:'none',stroke:ink,'stroke-width':1,'stroke-dasharray':'4 3'},plot);
+        svgEl('circle',{cx:X(0),cy:Y(0),r:size/2/z*c.innerDeadzone,fill:'none',stroke:ink,'stroke-width':1},plot);
+      }
+    }
+    for(const v of [-z,0,z]) {text(svg,X(v),t+size+18,String(v),{'text-anchor':v===-z?'start':v===z?'end':'middle'});text(svg,l-9,Y(v)+4,String(v),{'text-anchor':'end'});}
+    svgEl('line',{x1:X(0),y1:Y(-z),x2:X(0),y2:Y(z),stroke:neutral},plot);
+    svgEl('line',{x1:X(-z),y1:Y(0),x2:X(z),y2:Y(0),stroke:neutral},plot);
+    svgEl('circle',{cx:X(0),cy:Y(0),r:size/2/z,fill:'none',stroke:neutral},plot);
+    text(svg,l+size/2,height-3,'East / X (normalized)',{'text-anchor':'middle',class:'axis-title','data-axis':'x'});
+    text(svg,15,t+size/2,'North / Y (normalized)',{transform:`rotate(-90 15 ${t+size/2})`,'text-anchor':'middle',class:'axis-title','data-axis':'y'});
+    const raw=inputPoint();
+    svgEl('circle',{cx:X(0),cy:Y(0),r:size/2/z*state.radius,fill:'none',stroke:neutral,'stroke-dasharray':'3 3'},plot);
+    if(kind==='raw') {
+      svgEl('line',{x1:X(0),y1:Y(0),x2:X(raw[0]),y2:Y(raw[1]),stroke:ink,'stroke-width':2},plot);
+      svgEl('circle',{cx:X(raw[0]),cy:Y(raw[1]),r:5,fill:ink},plot);
+    } else {
+      const color=kind==='ds4'?S1:S2,fn=kind==='ds4'?M.ds4:M.decoupled,cfg=kind==='ds4'?state.ds4:state.rl;
+      let p=fn(...raw,cfg).out;
+      if(state.view==='output') {
+        const points=Array.from({length:721},(_,i)=>fn(...inputPoint(state.radius,i/2),cfg).out);
+        const path=points.map((v,i)=>(i?'L':'M')+X(v[0]).toFixed(3)+','+Y(v[1]).toFixed(3)).join('');
+        svgEl('path',{d:path,fill:'none',stroke:color,'stroke-width':1.7,...(kind==='rl'?{'stroke-dasharray':'5 3'}:{})},plot);
+        svgEl('circle',{cx:X(raw[0]),cy:Y(raw[1]),r:4,fill:'none',stroke:ink},plot);
+        svgEl('line',{x1:X(raw[0]),y1:Y(raw[1]),x2:X(p[0]),y2:Y(p[1]),stroke:color,'stroke-dasharray':'2 3'},plot);
+      } else p=raw;
+      svgEl('line',{x1:X(0),y1:Y(0),x2:X(p[0]),y2:Y(p[1]),stroke:color,'stroke-width':2},plot);
+      if(kind==='rl')svgEl('rect',{x:X(p[0])-4,y:Y(p[1])-4,width:8,height:8,fill:color},plot);
+      else svgEl('circle',{cx:X(p[0]),cy:Y(p[1]),r:5,fill:color},plot);
+      if(maxOf(p)>z)text(svg,l+size/2,t+13,'Point outside zoom',{'text-anchor':'middle'});
+    }
+    if(kind==='raw'&&maxOf(raw)>z)text(svg,l+size/2,t+13,'Point outside zoom',{'text-anchor':'middle'});
+    svg._geometry=g;
+  }
+  function drawTransfer(svg,kind) {
+    if(!globalThis.d3) {svg.replaceChildren();text(svg,10,25,'Chart library unavailable');return;}
+    const isAngle=kind==='angle',width=svg.parentElement.getBoundingClientRect().width,height=245,margin={left:64,right:24,top:18,bottom:52};
+    svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.setAttribute('height',height);svg.replaceChildren();
+    const data=Array.from({length:361},(_,i)=>{
+      const x=isAngle?i/4:i/360,p=isAngle?inputPoint(state.radius,x):inputPoint(x);
+      const a=M.ds4(...p,state.ds4).out,b=M.decoupled(...p,state.rl).out;
+      const fixAngle=q=>{const a=angleOf(q);return a===null?null:Math.max(0,Math.min(90,a));};
+      return {x,raw:isAngle?fixAngle(p):maxOf(p),ds4:isAngle?fixAngle(a):maxOf(a),rl:isAngle?fixAngle(b):maxOf(b)};
+    });
+    chartRows[kind]=data;
+    const maxX=isAngle?90:1,maxY=isAngle?90:1;
+    const x=d3.scaleLinear().domain(d3.extent([0,maxX,...data.map(d=>d.x)])).range([margin.left+4,width-margin.right-4]);
+    const y=d3.scaleLinear().domain(d3.extent([0,maxY,...data.flatMap(d=>[d.raw,d.ds4,d.rl]).filter(v=>v!==null)])).range([height-margin.bottom-4,margin.top+4]);
+    const sel=d3.select(svg),frame=sel.append('rect').attr('data-chart-frame','').attr('x',margin.left).attr('y',margin.top).attr('width',width-margin.left-margin.right).attr('height',height-margin.top-margin.bottom).attr('fill','none').attr('stroke',neutral);
+    const xticks=isAngle?[0,30,60,90]:[0,.5,1],yticks=isAngle?[0,45,90]:[0,.5,1];
+    for(const v of xticks)text(svg,x(v),height-margin.bottom+20,isAngle?v+'°':v,{'text-anchor':v===maxX?'end':v===0?'start':'middle'});
+    for(const v of yticks){text(svg,margin.left-9,y(v)+4,isAngle?v+'°':v,{'text-anchor':'end'});sel.append('line').attr('x1',margin.left).attr('x2',width-margin.right).attr('y1',y(v)).attr('y2',y(v)).attr('stroke',neutral);}
+    for(const [key,color,dash] of [['raw',ink,'2 4'],['ds4',S1,null],['rl',S2,'5 3']]) {
+      if(!state.visible[key])continue;
+      const line=d3.line().defined(d=>d[key]!==null).x(d=>x(d.x)).y(d=>y(d[key]));
+      sel.append('path').datum(data).attr('d',line).attr('fill','none').attr('stroke',color).attr('stroke-width',2).attr('stroke-dasharray',dash);
+    }
+    text(svg,(margin.left+width-margin.right)/2,height-4,isAngle?'Input angle (degrees)':'Input radius (normalized)',{'text-anchor':'middle',class:'axis-title','data-axis':'x'});
+    text(svg,16,(margin.top+height-margin.bottom)/2,isAngle?'Output angle (degrees)':'Largest |axis| (normalized)',{transform:`rotate(-90 16 ${(margin.top+height-margin.bottom)/2})`,'text-anchor':'middle',class:'axis-title','data-axis':'y'});
+    const guide=sel.append('line').attr('data-chart-hover-guide','').attr('y1',margin.top).attr('y2',height-margin.bottom).attr('stroke',ink).attr('opacity',0);
+    const keys=['raw','ds4','rl'];
+    const markers=[ink,S1,S2].map(color=>sel.append('circle').attr('data-chart-hover-marker','').attr('r',4).attr('fill',color).attr('opacity',0));
+    function hover(event) {
+      const box=svg.getBoundingClientRect(),mx=Math.max(x(0),Math.min(x(maxX),(event.clientX-box.left)*width/box.width)),val=x.invert(mx);
+      const i=d3.bisector(d=>d.x).center(data,val),j=data[i].x>val?Math.max(0,i-1):i,k=Math.min(data.length-1,j+1),f=k===j?0:(val-data[j].x)/(data[k].x-data[j].x);
+      const values=keys.map(key=>!state.visible[key]||data[j][key]===null||data[k][key]===null?null:data[j][key]+f*(data[k][key]-data[j][key]));
+      guide.attr('x1',mx).attr('x2',mx).attr('opacity',.5);
+      values.forEach((v,n)=>markers[n].attr('cx',mx).attr('cy',v===null?y(0):y(v)).attr('opacity',v===null?0:1));
+      const tip=root.querySelector('.jc-tooltip'),rb=root.getBoundingClientRect();root.style.position='relative';
+      tip.textContent=(isAngle?val.toFixed(1)+'°':val.toFixed(3))+' → '+keys.map((key,n)=>state.visible[key]?['Raw','DS4','Remapper'][n]+' '+(values[n]===null?'centered':values[n].toFixed(isAngle?1:3)):null).filter(Boolean).join(' · ');tip.hidden=false;
+      tip.style.left=Math.max(0,Math.min(root.clientWidth-240,event.clientX-rb.left-110))+'px';tip.style.top=(box.top-rb.top+6)+'px';
+    }
+    const hit=sel.append('rect').attr('data-chart-hit','').attr('data-chart-hover-overlay','cross-series').attr('x',margin.left).attr('y',margin.top).attr('width',width-margin.left-margin.right).attr('height',height-margin.top-margin.bottom).attr('fill','transparent');
+    hit.on('pointermove',hover).on('pointerdown',hover).on('pointerleave',()=>{guide.attr('opacity',0);markers.forEach(m=>m.attr('opacity',0));root.querySelector('.jc-tooltip').hidden=true;});
+  }
+  function draw() {
+    frame=0;$('radius').value=state.radius;$('angle').value=state.angle;$('radius-value').textContent=state.radius.toFixed(3);$('angle-value').textContent=state.angle.toFixed(1)+'°';
+    for(const button of $('series-legend').querySelectorAll('button')) {const on=state.visible[button.dataset.series];button.setAttribute('aria-pressed',String(on));button.querySelector('.jc-swatch').style.opacity=on?1:.25;}
+    if(!valid()) {for(const id of ['raw','ds4','rl','angle-chart','travel-chart'])$(id).replaceChildren();for(const id of ['raw-value','ds4-value','rl-value','selection'])$(id).textContent='';return;}
+    const raw=inputPoint(),a=M.ds4(...raw,state.ds4),b=M.decoupled(...raw,state.rl);
+    $('raw-value').innerHTML=info(raw);$('ds4-value').innerHTML=info(a.out);$('rl-value').innerHTML=info(b.out);
+    $('selection').textContent='Virtual Xbox axes: DS4 ('+a.stick.join(', ')+') · Remapper ('+b.stick.join(', ')+')';
+    $('map-legend').textContent=state.view==='regions'?'Gray: zero output · Color: cardinal output · Unfilled: diagonal output · Dashed boundary: remapper transition end':'Faint ring: raw travel · Colored trace: mapped ring · Hollow point: raw input · Filled point: output';
+    plane($('raw'),'raw');plane($('ds4'),'ds4');plane($('rl'),'rl');drawTransfer($('angle-chart'),'angle');drawTransfer($('travel-chart'),'travel');
+  }
+  function schedule() {if(!frame)frame=requestAnimationFrame(draw);}
+  $('radius').addEventListener('input',()=>{state.radius=Number($('radius').value);schedule();});$('radius').addEventListener('change',persist);
+  $('angle').addEventListener('input',()=>{state.angle=Number($('angle').value);schedule();});$('angle').addEventListener('change',persist);
+  $('preset').addEventListener('change',()=>{if($('preset').value==='custom')return;const old=state;state=makeState($('preset').value);state.view=old.view;state.visible=old.visible;settings();schedule();persist();});
+  $('view').addEventListener('change',()=>{state.view=$('view').value;schedule();persist();});
+  $('zoom').addEventListener('change',()=>{state.zoom=Number($('zoom').value);schedule();persist();});
+  $('mode').addEventListener('change',()=>{state.ds4.mode=$('mode').value;changed();settings();persist();});
+  $('square').addEventListener('change',()=>{state.ds4.square=$('square').checked;$('roundness-field').hidden=!state.ds4.square;changed();persist();});
+  $('roundness').addEventListener('input',()=>{const v=Number($('roundness').value);if(Number.isFinite(v)){state.ds4.roundness=Math.max(0,Math.min(1000,v));changed();}});$('roundness').addEventListener('change',()=>{$('roundness').value=state.ds4.roundness;persist();});
+  $('curve').addEventListener('change',()=>{state.ds4.curve=Number($('curve').value);changed();persist();});
+  $('rl-square').addEventListener('change',()=>{state.rl.squareStick=$('rl-square').checked;$('rl-roundness-field').hidden=!state.rl.squareStick;changed();persist();});
+  $('rl-roundness').addEventListener('input',()=>{const v=Number($('rl-roundness').value);if(Number.isFinite(v)){state.rl.squareRoundness=Math.max(0,Math.min(1000,v));changed();}});$('rl-roundness').addEventListener('change',()=>{$('rl-roundness').value=state.rl.squareRoundness;persist();});
+  for(const [key,label,color] of [['raw','Raw · dotted',ink],['ds4','DS4Windows · solid',S1],['rl','Remapper · dashed',S2]]) {
+    const button=document.createElement('button');button.type='button';button.className='cursor-interaction';button.dataset.series=key;button.setAttribute('aria-pressed',String(state.visible[key]));
+    const swatch=document.createElement('span');swatch.className='jc-swatch';swatch.style.background=color;button.append(swatch,document.createTextNode(label));
+    button.addEventListener('click',()=>{state.visible[key]=!state.visible[key];button.setAttribute('aria-pressed',String(state.visible[key]));swatch.style.opacity=state.visible[key]?1:.25;schedule();persist();});$('series-legend').append(button);
+  }
+  function move(e) {const svg=$('raw'),g=svg._geometry;if(!g)return;const b=svg.getBoundingClientRect();let x=(((e.clientX-b.left)*g.width/b.width-g.l)/g.size*2-1)*state.zoom,y=(1-((e.clientY-b.top)*g.height/b.height-g.t)/g.size*2)*state.zoom;const r=Math.hypot(x,y);state.radius=Math.min(1,r);state.angle=r<.003?0:Math.atan2(y,x)/deg;schedule();}
+  $('raw').addEventListener('pointerdown',e=>{drag=true;$('raw').setPointerCapture(e.pointerId);move(e);});$('raw').addEventListener('pointermove',e=>{if(drag)move(e);});$('raw').addEventListener('pointerup',()=>{drag=false;persist();});$('raw').addEventListener('pointercancel',()=>{drag=false;});
+  window.addEventListener('openai:set_globals',e=>{if(applySaved(e.detail?.globals?.widgetState)){settings();schedule();}});
+  new ResizeObserver(schedule).observe(root);
+  settings();draw();
+})();
+</script>
+<!-- RLREMAPPER_VISUALIZER_END -->

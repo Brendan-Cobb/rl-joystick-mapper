@@ -3,11 +3,59 @@ using System.Text.Json;
 
 namespace RlRemapper;
 
+public enum StickMappingMode
+{
+    LegacyAngular,
+    DecoupledAxial
+}
+
 public sealed class Settings
 {
-    [Category("Snap")] public double InnerDeadzone { get; set; } = 0.05;
-    [Category("Snap")] public double OuterRingThreshold { get; set; } = 0;
-    [Category("Snap")] public double SnapAngleDeg { get; set; } = 8;
+    [Category("Stick mapping")][DisplayName("Mapping mode")]
+    [Description("Left-stick transformation. LegacyAngular preserves the original angular snapping and square output. DecoupledAxial enables the separate axial and output controls below.")]
+    public StickMappingMode MappingMode { get; set; } = StickMappingMode.LegacyAngular;
+    [Category("Stick mapping")][DisplayName("Inner deadzone")]
+    [Description("Circular center deadzone as a fraction of full stick travel (0–1). Also supplies the unchanged right-stick cutoff. DecoupledAxial requires a value below 1 and room for the center blend.")]
+    public double InnerDeadzone { get; set; } = 0.05;
+    [Category("Legacy angular mode")][DisplayName("Outer ring threshold")]
+    [Description("LegacyAngular only: input radius where angular snapping begins, from 0 to 1. Square conversion still applies below this threshold.")]
+    public double OuterRingThreshold { get; set; } = 0;
+    [Category("Legacy angular mode")][DisplayName("Snap angle (degrees)")]
+    [Description("LegacyAngular only: cardinal angular tolerance, from 0 to less than 45 degrees.")]
+    public double SnapAngleDeg { get; set; } = 8;
+    [Category("Decoupled axial mode")][DisplayName("X snap width (north/south)")]
+    [Description("DecoupledAxial only: suppresses X near north/south outside the center blend. Half-width of the vertical strip as a fraction of full axis travel (0–1), below X max zone.")]
+    public double XSnapWidth { get; set; } = 0.10;
+    [Category("Decoupled axial mode")][DisplayName("Y snap width (east/west)")]
+    [Description("DecoupledAxial only: suppresses Y near east/west outside the center blend. Half-width of the horizontal strip as a fraction of full axis travel (0–1), below Y max zone.")]
+    public double YSnapWidth { get; set; } = 0.10;
+    [Category("Decoupled axial mode")][DisplayName("Center blend width")]
+    [Description("DecoupledAxial only: small transition outside the overlap, as a fraction of full axis travel (0.000001–1). Larger values restore more center response. Must leave space before the max zones.")]
+    public double CenterBlendWidth { get; set; } = 0.05;
+    [Category("Decoupled X output")][DisplayName("X anti-deadzone")]
+    [Description("DecoupledAxial only: X output floor (0–1) applied to active output. Within the center blend its onset is softened. Applied after the max-output cap, as in DS4Windows.")]
+    public double XAntiDeadzone { get; set; }
+    [Category("Decoupled X output")][DisplayName("X max zone")]
+    [Description("DecoupledAxial only: X input travel that reaches full scaled output (above X snap width, up to 1). Must exceed the center blend end.")]
+    public double XMaxZone { get; set; } = 1;
+    [Category("Decoupled X output")][DisplayName("X max output")]
+    [Description("DecoupledAxial only: X output cap before anti-deadzone and Square Stick (0–1). Those later stages can raise the final component above this value.")]
+    public double XMaxOutput { get; set; } = 1;
+    [Category("Decoupled Y output")][DisplayName("Y anti-deadzone")]
+    [Description("DecoupledAxial only: Y output floor (0–1) applied to active output. Within the center blend its onset is softened. Applied after the max-output cap, as in DS4Windows.")]
+    public double YAntiDeadzone { get; set; }
+    [Category("Decoupled Y output")][DisplayName("Y max zone")]
+    [Description("DecoupledAxial only: Y input travel that reaches full scaled output (above Y snap width, up to 1). Must exceed the center blend end.")]
+    public double YMaxZone { get; set; } = 1;
+    [Category("Decoupled Y output")][DisplayName("Y max output")]
+    [Description("DecoupledAxial only: Y output cap before anti-deadzone and Square Stick (0–1). Those later stages can raise the final component above this value.")]
+    public double YMaxOutput { get; set; } = 1;
+    [Category("Decoupled square stick")][DisplayName("Square Stick")]
+    [Description("DecoupledAxial only: enables DS4-style circle-to-square expansion after axial processing. LegacyAngular always uses its original square conversion.")]
+    public bool SquareStick { get; set; } = true;
+    [Category("Decoupled square stick")][DisplayName("Square roundness")]
+    [Description("DecoupledAxial only: exponent from 0 to 1000 controlling Square Stick strength by radius. 0 applies full squaring throughout travel; larger values preserve a rounder center.")]
+    public double SquareRoundness { get; set; } = 0;
     [Category("Controller")] public int ControllerIndex { get; set; }
     [Category("Controller")] public int StickXAxis { get; set; } = 0;
     [Category("Controller")] public int StickYAxis { get; set; } = 1;
@@ -32,12 +80,30 @@ public sealed class Settings
     }
     public void Validate()
     {
-        if (InnerDeadzone is < 0 or > 1 || OuterRingThreshold is < 0 or > 1 || SnapAngleDeg is < 0 or >= 45 || PollRateHz is < 50 or > 1000 || ControllerIndex < 0)
+        if (!Enum.IsDefined(typeof(StickMappingMode), MappingMode))
+            throw new ArgumentException("Choose a valid stick mapping mode.");
+        if (!UnitRange(InnerDeadzone) || !UnitRange(OuterRingThreshold) || !double.IsFinite(SnapAngleDeg) || SnapAngleDeg is < 0 or >= 45 || PollRateHz is < 50 or > 1000 || ControllerIndex < 0)
             throw new ArgumentException("Deadzone/threshold must be 0–1, angle 0–<45 degrees, poll rate 50–1000 Hz, controller index >= 0.");
+        if (MappingMode == StickMappingMode.DecoupledAxial)
+        {
+            if (InnerDeadzone >= 1)
+                throw new ArgumentException("Decoupled axial mode requires an inner deadzone below 1.");
+            if (!UnitRange(XSnapWidth) || !UnitRange(YSnapWidth) || !UnitRange(XMaxZone) || !UnitRange(YMaxZone) || XSnapWidth >= XMaxZone || YSnapWidth >= YMaxZone)
+                throw new ArgumentException("Axial snap widths and max zones must be finite values from 0 to 1, with each snap width below its matching max zone.");
+            if (!UnitRange(XAntiDeadzone) || !UnitRange(YAntiDeadzone) || !UnitRange(XMaxOutput) || !UnitRange(YMaxOutput))
+                throw new ArgumentException("Anti-deadzones and max outputs must be finite values from 0 to 1.");
+            if (!UnitRange(CenterBlendWidth) || CenterBlendWidth < 0.000001)
+                throw new ArgumentException("Center blend width must be a finite value from 0.000001 to 1.");
+            if (XSnapWidth + CenterBlendWidth >= XMaxZone || YSnapWidth + CenterBlendWidth >= YMaxZone || InnerDeadzone + CenterBlendWidth >= Math.Min(XMaxZone, YMaxZone))
+                throw new ArgumentException("There is no room for the center blend: each snap width plus the blend width must be below its matching max zone, and inner deadzone plus blend width must be below both max zones. Reduce the deadzone, snap widths or blend width, or increase the max zones.");
+            if (!double.IsFinite(SquareRoundness) || SquareRoundness is < 0 or > 1000)
+                throw new ArgumentException("Square roundness must be a finite value from 0 to 1000.");
+        }
         foreach (int axis in new[] { StickXAxis, StickYAxis, RightStickXAxis, RightStickYAxis, LeftTriggerAxis, RightTriggerAxis })
             if (axis < 0 || axis > 255) throw new ArgumentException("Axis indices must be 0–255.");
         _ = ParseButtons();
     }
+    static bool UnitRange(double value) => double.IsFinite(value) && value >= 0 && value <= 1;
     public (int Index, ushort Mask)[] ParseButtons()
     {
         var map = new Dictionary<string, ushort>(StringComparer.OrdinalIgnoreCase) {

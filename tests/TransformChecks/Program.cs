@@ -22,3 +22,4 @@ if (!hidePaths.SequenceEqual(new[] { "HID\\Gamepad", "USB\\GamepadMI00" }))
 hidePaths = ControllerDeviceTree.HidePaths("HID\\DirectInput", new[] { new ControllerDeviceTree.Node("USB\\CompositeWithKeyboard", "USB") });
 if (!hidePaths.SequenceEqual(new[] { "HID\\DirectInput" })) throw new Exception("Non-XInput hiding must remain limited to the selected interface.");
 Console.WriteLine("Transform and HidHide device selection checks passed");
+DecoupledAxialChecks.Run();

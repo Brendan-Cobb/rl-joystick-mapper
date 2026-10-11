@@ -1,4 +1,4 @@
-#define AppVersion "0.1.8"
+#define AppVersion "0.1.9"
 [Setup]
 AppName=RL Remapper
 AppVersion={#AppVersion}
