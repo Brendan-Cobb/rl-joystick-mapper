@@ -35,7 +35,32 @@ internal static class Checks
         apply.Invoke(form, [3]);
         if ((string)grid.Rows[3].Cells[1].Value != "a" || (string)grid.Rows[0].Cells[1].Value != "none") throw new Exception("Guided assignment retained duplicate A binding.");
         if (!controls.OfType<Label>().Any(label => label.Text == "Press B / Circle")) throw new Exception("Guided setup did not advance to B/Circle.");
-        foreach (int tab in new[] { 0, 1, 2 }) {
+        if (tabs.TabPages.Count != 2 || tabs.TabPages[0].Text != "Controller setup" || tabs.TabPages[1].Text != "Advanced controller setup") throw new Exception("Expected two controller setup tabs.");
+        var next = editorType.GetMethod("NextGuidedStep", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var readAxes = editorType.GetMethod("ReadGuidedAxes", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var guideStep = editorType.GetField("guideStep", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        while ((int)guideStep.GetValue(form)! < 15) next.Invoke(form, null);
+        editorType.GetField("guideBaseline", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(form, new double[] { 0, 0, 0, 0, -1, -1 });
+        if (!controls.OfType<Label>().Any(label => label.Text == "Move the left stick left or right")) throw new Exception("Buttons did not transition to sticks.");
+        apply.Invoke(form, [0]);
+        if ((int)guideStep.GetValue(form)! != 15) throw new Exception("Button advanced an axis prompt.");
+        double[] resting = [0, 0, 0, 0, -1, -1];
+        double[] held = [0.8, 0, 0, 0, -1, -1];
+        readAxes.Invoke(form, [held]);
+        if ((int)guideStep.GetValue(form)! != 15) throw new Exception("Axis accepted before release.");
+        int[] learnedAxes = [2, 3, 0, 1, 5, 4];
+        foreach (int index in learnedAxes) {
+            readAxes.Invoke(form, [resting]);
+            var ambiguous = (double[])resting.Clone(); ambiguous[0] = 0.8; ambiguous[1] = 0.8;
+            int before = (int)guideStep.GetValue(form)!;
+            readAxes.Invoke(form, [ambiguous]);
+            if ((int)guideStep.GetValue(form)! != before) throw new Exception("Ambiguous axes accepted.");
+            var values = (double[])resting.Clone(); values[index] = 0.8;
+            readAxes.Invoke(form, [values]);
+            readAxes.Invoke(form, [values]);
+        }
+        if (!controls.OfType<Label>().Any(label => label.Text == "Controller setup complete")) throw new Exception("Combined setup did not complete.");
+        foreach (int tab in new[] { 0, 1 }) {
             tabs.SelectedIndex = tab;
             form.PerformLayout();
             using var bitmap = new Bitmap(form.Width, form.Height);
@@ -48,6 +73,7 @@ internal static class Checks
         var result = (Settings)editorType.GetProperty("Result")!.GetValue(form)!;
         if (result.ParseButtons().Single(pair => pair.Index == 0).Mask != 0x2000) throw new Exception("Edited output did not serialize to the engine mapping.");
         if (original.ButtonMappings != "0=a\n1=none\n12=start" || result.SnapAngleDeg != 12) throw new Exception("Editing changed the source settings or unrelated snap settings.");
+        if (!new[] { result.StickXAxis, result.StickYAxis, result.RightStickXAxis, result.RightStickYAxis, result.LeftTriggerAxis, result.RightTriggerAxis }.SequenceEqual(learnedAxes)) throw new Exception("Guided axes did not save.");
         if (form.DialogResult != DialogResult.OK) throw new Exception("Save did not accept the editor.");
         using var cancelled = (Form)Activator.CreateInstance(editorType, original)!;
         cancelled.StartPosition = FormStartPosition.Manual;

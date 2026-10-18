@@ -8,11 +8,12 @@ internal sealed class Runner
     readonly Func<Settings> settings;
     readonly Action<string> status;
     readonly bool waitForPhysical;
-    public Runner(Func<Settings> settings, Action<string> status, bool waitForPhysical = false) { this.settings = settings; this.status = status; this.waitForPhysical = waitForPhysical; }
+    readonly VirtualController output;
+    public Runner(Func<Settings> settings, Action<string> status, VirtualController output, bool waitForPhysical = false) { this.output = output; this.settings = settings; this.status = status; this.waitForPhysical = waitForPhysical; }
     public void Run(CancellationToken token)
     {
-        IntPtr client = IntPtr.Zero, target = IntPtr.Zero, js = IntPtr.Zero;
-        bool connected = false, added = false, sdl = false;
+        IntPtr js = IntPtr.Zero;
+        bool sdl = false;
         try
         {
             // SDL XInput backend remains accessible to a HidHide-whitelisted process.
@@ -23,15 +24,11 @@ internal sealed class Runner
             var cfg = settings(); cfg.Validate();
             // In Player 1 preparation mode the physical pad is unplugged. Allocate
             // the virtual target first so it can claim the first free XInput slot.
-            client = Vigem.vigem_alloc(); target = Vigem.vigem_target_x360_alloc();
-            if (client == IntPtr.Zero || target == IntPtr.Zero) throw new InvalidOperationException("ViGEm allocation failed.");
-            Vigem.Check(Vigem.vigem_connect(client)); connected = true;
-            Vigem.Check(Vigem.vigem_target_add(client, target)); added = true;
-            var initial = new XusbReport(); Vigem.Check(Vigem.vigem_target_x360_update(client, target, ref initial));
+            output.EnsureConnected();
             js = Sdl.OpenPhysical(cfg.ControllerIndex);
             if (waitForPhysical)
             {
-                Vigem.Check(Vigem.vigem_target_x360_get_user_index(client, target, out uint slot));
+                uint slot = output.Slot;
                 if (slot != 0) throw new InvalidOperationException($"Virtual controller received slot {slot + 1}, not Player 1. Another controller is reserving the first slot; disconnect it and try again.");
                 status("Player 1 virtual controller ready; reconnect the physical controller");
                 while (js == IntPtr.Zero && !token.IsCancellationRequested)
@@ -60,7 +57,7 @@ internal sealed class Runner
                 Sdl.SDL_JoystickUpdate();
                 if (Sdl.SDL_JoystickGetAttached(js) == 0)
                 {
-                    var zero = new XusbReport(); Vigem.Check(Vigem.vigem_target_x360_update(client, target, ref zero));
+                    output.Neutralize();
                     Sdl.SDL_JoystickClose(js); js = IntPtr.Zero;
                     status("Disconnected; waiting for controller");
                     while (!token.IsCancellationRequested && js == IntPtr.Zero)
@@ -90,7 +87,7 @@ internal sealed class Runner
                     if ((hat & 8) != 0) report.Buttons |= 4;
                     if ((hat & 2) != 0) report.Buttons |= 8;
                 }
-                Vigem.Check(Vigem.vigem_target_x360_update(client, target, ref report));
+                output.Send(report);
                 long period = Stopwatch.Frequency / cfg.PollRateHz;
                 next += period;
                 long remaining = next - clock.ElapsedTicks;
@@ -101,12 +98,9 @@ internal sealed class Runner
         }
         finally
         {
-            if (added) { var zero = new XusbReport(); Vigem.vigem_target_x360_update(client, target, ref zero); Vigem.vigem_target_remove(client, target); }
-            if (connected) Vigem.vigem_disconnect(client);
-            if (target != IntPtr.Zero) Vigem.vigem_target_free(target);
-            if (client != IntPtr.Zero) Vigem.vigem_free(client);
             if (js != IntPtr.Zero) Sdl.SDL_JoystickClose(js);
             if (sdl) Sdl.SDL_Quit();
+            output.Neutralize();
         }
     }
 }

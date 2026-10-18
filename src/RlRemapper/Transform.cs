@@ -5,10 +5,17 @@ public static class Transform
     /// <summary>Maps the left stick. Existing profiles retain their original angular pipeline.</summary>
     public static (double X, double Y) ApplyStick(double x, double y, Settings settings)
     {
-        if (settings.MappingMode == StickMappingMode.LegacyAngular)
+        if (settings.MappingMode == StickMappingMode.Angular)
         {
             var legacy = Apply(x, y, settings.InnerDeadzone, settings.OuterRingThreshold, settings.SnapAngleDeg);
-            return Square(legacy.X, legacy.Y);
+            // Preserve the original square pipeline exactly at its default settings.
+            if (settings.AngularMaxZone == 1 && settings.AngularSquareOutput)
+                return Square(legacy.X, legacy.Y);
+            double magnitude = Math.Sqrt(legacy.X * legacy.X + legacy.Y * legacy.Y);
+            if (magnitude == 0) return (0, 0);
+            double scale = Math.Min(magnitude / settings.AngularMaxZone, 1) / magnitude;
+            var output = (X: legacy.X * scale, Y: legacy.Y * scale);
+            return settings.AngularSquareOutput ? Square(output.X, output.Y) : output;
         }
 
         // Settings are validated when published, not on every controller poll.
@@ -17,6 +24,18 @@ public static class Transform
         y = Math.Clamp(y, -1, 1);
         double radius = Math.Sqrt(x * x + y * y);
         if (radius <= settings.InnerDeadzone || radius == 0) return (0, 0);
+
+        if (settings.MappingMode == StickMappingMode.Radial)
+        {
+            // Apply one response to magnitude so both components keep the same
+            // scale factor. Saturating magnitude also handles square-gate input.
+            double travel = Math.Clamp((radius - settings.InnerDeadzone) /
+                (settings.RadialMaxZone - settings.InnerDeadzone), 0, 1);
+            double magnitude = settings.RadialAntiDeadzone +
+                (settings.RadialMaxOutput - settings.RadialAntiDeadzone) * travel;
+            double rx = x / radius * magnitude, ry = y / radius * magnitude;
+            return settings.SquareStick ? Square(rx, ry, settings.SquareRoundness) : (rx, ry);
+        }
 
         double ux = Math.Abs(x) / radius, uy = Math.Abs(y) / radius;
         double band = settings.CenterBlendWidth;

@@ -10,103 +10,172 @@ internal static class Program
 internal sealed class MainForm : Form
 {
     Settings current;
-    readonly PropertyGrid grid = new() { Dock = DockStyle.Fill, HelpVisible = true };
-    readonly Label state = new() { AutoSize = true, Text = "Stopped" };
-    readonly Button start = new() { Text = "Start", AutoSize = true };
-    readonly Button stop = new() { Text = "Stop", AutoSize = true, Enabled = false };
+    readonly PropertyGrid grid = new() { Dock = DockStyle.Fill, HelpVisible = true, PropertySort = PropertySort.Categorized };
+    readonly Label state = new() { AutoSize = true, Text = "Remapping off", Margin = new Padding(8) };
+    readonly Label controller = new() { AutoSize = true, Text = "Controller: connect a controller", Margin = new Padding(8) };
+    readonly Label notice = new() { AutoSize = true, Margin = new Padding(8) };
+    readonly Button start = new() { Text = "Start remapping", AutoSize = true, BackColor = Color.LightBlue, Padding = new Padding(8, 4, 8, 4) };
+    readonly Button save = new() { Text = "Apply changes", AutoSize = true, Enabled = false };
+    readonly Button remap = new() { Text = "Remap controls", AutoSize = true };
+    readonly Button select = new() { Text = "Change…", AutoSize = true };
+    readonly Button more = new() { Text = "More ▾", AutoSize = true };
+    bool busy, closeRequested, allowClose;
     CancellationTokenSource? cancellation;
     Task? task;
-    public MainForm()
+    readonly VirtualController output = new();
+    readonly Func<string, Task<string?>> restoreVisibility;
+    public MainForm() : this(true) { }
+    internal MainForm(bool refreshDevices) : this(refreshDevices, RestoreVisibility) { }
+    internal MainForm(bool refreshDevices, Func<string, Task<string?>> restoreVisibility)
     {
+        this.restoreVisibility = restoreVisibility;
         Text = "RL Remapper"; Width = 650; Height = 680;
         try { current = Settings.Load(); current.Validate(); }
         catch (Exception e) { current = new Settings(); MessageBox.Show("Invalid saved settings; using defaults: " + e.Message); }
-        grid.SelectedObject = current;
-        var bar = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true };
-        var save = new Button { Text = "Save / Apply", AutoSize = true };
+        grid.SelectedObject = new SettingsView(current);
+        MinimumSize = new Size(540, 480);
+        var bar = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(8) };
+        grid.PropertyValueChanged += (_, _) => { save.Enabled = true; notice.Text = "Unapplied changes"; };
         save.Click += (_, _) => {
-            try { grid.Focus(); current.Save(); Volatile.Write(ref active, current.Snapshot()); state.Text = "Settings saved/applied"; }
+            try { grid.Focus(); current.Save(); Volatile.Write(ref active, current.Snapshot()); notice.Text = "Changes applied"; save.Enabled = false; }
             catch (Exception e) { MessageBox.Show(e.Message, "Invalid settings"); }
         };
-        var detect = new Button { Text = "Inspect controller", AutoSize = true };
-        var remap = new Button { Text = "Remap controls", AutoSize = true };
         remap.Click += (_, _) => {
             if (task is { IsCompleted: false }) { MessageBox.Show("Stop remapping before editing controls."); return; }
             using var editor = new ControlMappingForm(current);
             if (editor.ShowDialog(this) != DialogResult.OK) return;
-            try { editor.Result.Save(); current = editor.Result; grid.SelectedObject = current; Volatile.Write(ref active, current.Snapshot()); state.Text = "Control mappings saved"; }
+            try { editor.Result.Save(); current = editor.Result; grid.SelectedObject = new SettingsView(current); Volatile.Write(ref active, current.Snapshot()); notice.Text = "Control mappings saved"; save.Enabled = false; }
             catch (Exception error) { MessageBox.Show(error.Message, "Could not save mappings"); }
         };
-        detect.Click += (_, _) => Inspect();
-        var select = new Button { Text = "Select physical device", AutoSize = true };
         select.Click += (_, _) => SelectDevice();
-        var unhide = new Button { Text = "Restore device visibility", AutoSize = true };
-        unhide.Click += (_, _) => {
-            if (task is { IsCompleted: false }) { MessageBox.Show("Stop first."); return; }
-            try { HidHide.Unhide(current.DevicePath); state.Text = "Device visible again"; }
-            catch (Exception e) { MessageBox.Show(e.Message); }
-        };
-        start.Click += (_, _) => Start();
-        var prepare = new Button { Text = "Prepare Player 1", AutoSize = true };
-        prepare.Click += (_, _) => Start(true);
-        stop.Click += (_, _) => cancellation?.Cancel();
-        bar.Controls.AddRange(new Control[] { start, prepare, stop, remap, save, select, unhide, detect, state });
-        Controls.Add(grid); Controls.Add(bar);
+        start.Click += (_, _) => { if (busy) Stop(); else Start(); };
+        var menu = new ContextMenuStrip();
+        menu.Items.Add("Fix Player 2 assignment…", null, (_, _) => {
+            if (string.IsNullOrWhiteSpace(current.DevicePath) && !SelectDevice()) return;
+            if (MessageBox.Show(this, "1. Close Rocket League.\n2. Unplug your controller.\n3. Click OK and wait for the reconnect prompt.\n4. Reconnect your controller, then launch Rocket League once remapping is active.", "Fix Player 2 assignment", MessageBoxButtons.OKCancel) == DialogResult.OK) Start(true);
+        });
+        var troubleshooting = new ToolStripMenuItem("Troubleshooting");
+        troubleshooting.DropDownItems.Add("View controller inputs…", null, (_, _) => Inspect());
+        troubleshooting.DropDownItems.Add("Restore controller visibility…", null, async (_, _) => await RestoreControllerVisibility());
+        menu.Items.Add(troubleshooting);
+        more.Click += (_, _) => menu.Show(more, new Point(0, more.Height));
+        var deviceRow = new FlowLayoutPanel { AutoSize = true };
+        deviceRow.Controls.AddRange([controller, select]);
+        var actions = new FlowLayoutPanel { AutoSize = true };
+        actions.Controls.AddRange([start, remap, more]);
+        bar.Controls.AddRange([deviceRow, actions, state]);
+        var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, Padding = new Padding(8) };
+        footer.Controls.AddRange([save, notice]);
+        Controls.Add(grid); Controls.Add(footer); Controls.Add(bar);
+        void FitLabels() {
+            int width = Math.Max(200, ClientSize.Width - 70);
+            controller.MaximumSize = new Size(width - select.Width - 20, 0);
+            state.MaximumSize = notice.MaximumSize = new Size(width, 0);
+        }
+        Resize += (_, _) => FitLabels();
+        FitLabels();
         active = current.Snapshot();
+        if (refreshDevices) Shown += (_, _) => RefreshController();
+        FormClosed += (_, _) => { menu.Dispose(); cancellation?.Dispose(); output.Dispose(); };
     }
     Settings active;
-    void SelectDevice()
+    bool SelectDevice()
     {
-        if (task is { IsCompleted: false }) { MessageBox.Show("Stop remapping first."); return; }
+        if (busy) return false;
         try
         {
             var devices = HidHide.GamingDevices();
             if (devices.Count == 0) throw new InvalidOperationException("No physical gaming devices found. Plug in the controller and restart if drivers were just installed.");
-            using var dialog = new Form { Text = "Select only the controller to remap", Width = 850, Height = 260 };
-            var list = new ListBox { Dock = DockStyle.Fill, DataSource = devices };
+            using var dialog = new Form { Text = "Choose your controller", Width = 540, Height = 260, StartPosition = FormStartPosition.CenterParent };
+            var list = new ListBox { Dock = DockStyle.Fill, DataSource = devices, DisplayMember = "Name" };
             var confirm = new Button { Dock = DockStyle.Bottom, Text = "Use selected device", DialogResult = DialogResult.OK };
             dialog.Controls.Add(list); dialog.Controls.Add(confirm); dialog.AcceptButton = confirm;
-            if (dialog.ShowDialog(this) != DialogResult.OK || list.SelectedItem is not HidHide.Device chosen) return;
+            if (dialog.ShowDialog(this) != DialogResult.OK || list.SelectedItem is not HidHide.Device chosen) return false;
             current.DevicePath = chosen.Path; grid.Refresh(); current.Save();
-            Volatile.Write(ref active, current.Snapshot()); state.Text = $"Selected: {chosen.Name}";
+            Volatile.Write(ref active, current.Snapshot()); controller.Text = $"Controller: {chosen.Name} · Connected";
+            save.Enabled = false; notice.Text = "Settings saved"; return true;
         }
         catch (Exception e) { MessageBox.Show(e.Message, "Controller selection failed"); }
+        return false;
     }
-    void Start(bool preparePlayerOne = false)
+    void RefreshController()
     {
-        if (task is { IsCompleted: false }) { MessageBox.Show("Stop remapping first."); return; }
-        try { current.Validate(); current.Save(); Volatile.Write(ref active, current.Snapshot()); }
-        catch (Exception e) { MessageBox.Show(e.Message); return; }
-        try
-        {
+        try {
+            var devices = HidHide.GamingDevices();
+            var chosen = devices.FirstOrDefault(d => d.Path.Equals(current.DevicePath, StringComparison.OrdinalIgnoreCase));
+            if (chosen == null && devices.Count == 1) chosen = devices[0];
+            controller.Text = chosen != null ? $"Controller: {chosen.Name} - Connected" : "Controller: " + (devices.Count == 0 ? "not connected" : "choose a controller");
+        } catch { controller.Text = "Controller: connection unavailable"; }
+    }
+    void SetBusy(bool value)
+    {
+        busy = value; remap.Enabled = select.Enabled = more.Enabled = !value;
+        start.Enabled = true; start.Text = value ? "Stop remapping" : "Start remapping";
+    }
+    void Stop()
+    {
+        start.Enabled = false; state.Text = "Stopping remapping..."; cancellation?.Cancel();
+    }
+    async Task RestoreControllerVisibility()
+    {
+        if (busy) return;
+        SetBusy(true); start.Enabled = false;
+        notice.Text = "Restoring controller visibility...";
+        try {
+            output.Dispose();
+            notice.Text = await restoreVisibility(current.DevicePath) ?? "Controller available to other apps";
+        }
+        catch (Exception e) { notice.Text = "Could not restore controller visibility: " + e.Message; }
+        finally {
+            SetBusy(false);
+            if (closeRequested) { allowClose = true; Close(); }
+        }
+    }
+    static async Task<string?> RestoreVisibility(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        try { await Task.Run(() => HidHide.Unhide(path)); return null; }
+        catch (Exception e) { return "Could not restore controller visibility: " + e.Message; }
+    }
+    async void Start(bool preparePlayerOne = false)
+    {
+        if (busy) return;
+        try {
             var candidates = HidHide.GamingDevices();
-            if (preparePlayerOne)
-            {
-                if (candidates.Count != 0) throw new InvalidOperationException("Close Rocket League, unplug the physical controller, then click Prepare Player 1. Reconnect it once the virtual controller is ready.");
-                HidHide.PrepareDisconnected(current.DevicePath);
+            if (preparePlayerOne) {
+                if (candidates.Count != 0) throw new InvalidOperationException("Unplug your controller before continuing with Player 1 setup.");
+            } else if (!candidates.Any(d => d.Path.Equals(current.DevicePath, StringComparison.OrdinalIgnoreCase))) {
+                if (candidates.Count == 1) current.DevicePath = candidates[0].Path;
+                else if (!SelectDevice()) return;
             }
-            else
-            {
-            if (!candidates.Any(device => device.Path.Equals(current.DevicePath, StringComparison.OrdinalIgnoreCase)))
-            {
-                if (candidates.Count != 1) throw new InvalidOperationException("Select the physical gamepad before starting (automatic selection requires exactly one candidate). The saved selection may be an old or non-gamepad interface.");
-                current.DevicePath = candidates[0].Path;
-                current.Save(); grid.Refresh(); Volatile.Write(ref active, current.Snapshot());
-            }
-            HidHide.Configure(current.DevicePath);
+            grid.Focus(); current.Validate(); current.Save(); Volatile.Write(ref active, current.Snapshot());
+            save.Enabled = false; grid.Refresh();
+        }
+        catch (Exception e) { MessageBox.Show(this, e.Message, "Controller setup"); return; }
+        string path = current.DevicePath;
+        cancellation?.Dispose(); cancellation = new CancellationTokenSource();
+        var token = cancellation.Token;
+        SetBusy(true); state.Text = "Starting remapping..."; notice.Text = "";
+        try {
+            task = Task.Run(() => {
+                if (preparePlayerOne) { output.Dispose(); HidHide.PrepareDisconnected(path); } else HidHide.Configure(path);
+                token.ThrowIfCancellationRequested();
+                new Runner(() => Volatile.Read(ref active), text => {
+                    if (!IsDisposed && IsHandleCreated) BeginInvoke(() => { if (!token.IsCancellationRequested) state.Text = text; });
+                }, output, preparePlayerOne).Run(token);
+            });
+            await task;
+            state.Text = "Remapping off";
+        }
+        catch (OperationCanceledException) { state.Text = "Remapping off"; }
+        catch (Exception e) { output.Dispose(); state.Text = "Remapping stopped: " + e.Message; }
+        finally {
+            notice.Text = "Visibility unchanged. Use More > Troubleshooting to restore it.";
+            SetBusy(false); RefreshController();
+            if (closeRequested) {
+                allowClose = true; Close();
             }
         }
-        catch (Exception e) { MessageBox.Show(e.Message, "HidHide setup failed"); return; }
-        cancellation = new CancellationTokenSource();
-        var ct = cancellation.Token;
-        start.Enabled = false; stop.Enabled = true;
-        task = Task.Run(() => new Runner(() => Volatile.Read(ref active), text => {
-            if (!IsDisposed && IsHandleCreated) BeginInvoke(() => state.Text = text);
-        }, preparePlayerOne).Run(ct));
-        task.ContinueWith(t => {
-            if (IsDisposed || !IsHandleCreated) return;
-            BeginInvoke(() => { state.Text = t.Exception?.GetBaseException().Message ?? "Stopped"; start.Enabled = true; stop.Enabled = false; });
-        }, TaskScheduler.Default);
     }
     void Inspect()
     {
@@ -139,8 +208,12 @@ internal sealed class MainForm : Form
     }
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
-        cancellation?.Cancel();
-        if (task is { IsCompleted: false }) { e.Cancel = true; state.Text = "Stopping…"; return; }
+        if (allowClose || !busy) { base.OnFormClosing(e); return; }
+        e.Cancel = true;
         base.OnFormClosing(e);
+        if (closeRequested) return;
+        closeRequested = true;
+        grid.Enabled = save.Enabled = false;
+        Stop(); // The run (or an explicit restoration) finishes before closing.
     }
 }

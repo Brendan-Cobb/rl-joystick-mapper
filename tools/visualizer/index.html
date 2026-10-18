@@ -1788,164 +1788,42 @@ html&gt;body{padding:0}&lt;/style&gt;
 &lt;/script&gt;
 &lt;!-- RLREMAPPER_VISUALIZER_START --&gt;
 &lt;div id=&quot;joystick-compare&quot;&gt;
-  &lt;style&gt;
-    #joystick-compare { color:var(--foreground); }
-    #joystick-compare .jc-plots { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
-    #joystick-compare .jc-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
-    #joystick-compare .jc-plot { min-width:0; }
-    #joystick-compare .jc-plot h3 { margin-bottom:4px; }
-    #joystick-compare .jc-plot svg { display:block; width:100%; overflow:visible; touch-action:none; }
-    #joystick-compare .jc-plot svg text { fill:var(--foreground); font-size:12px; }
-    #joystick-compare .jc-readout { min-height:48px; }
-    #joystick-compare .jc-field { margin:12px 0; }
-    #joystick-compare .jc-field label { display:flex; justify-content:space-between; gap:12px; }
-    #joystick-compare .jc-swatch { display:inline-block; width:16px; height:3px; vertical-align:middle; margin-right:6px; }
-    #joystick-compare details { margin:12px 0; }
-    #joystick-compare summary { color:var(--foreground); }
-    #joystick-compare .jc-muted { color:var(--muted-foreground); }
-    #joystick-compare .jc-legend { display:flex; flex-wrap:wrap; gap:16px; margin:8px 0; }
-    #joystick-compare .jc-legend button { font:inherit; color:var(--foreground); background:transparent; border:0; padding:0; }
-    #joystick-compare .jc-grid-settings { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 16px; }
-    #joystick-compare .jc-head { padding-right:94px; }
-    #joystick-compare .jc-tooltip { position:absolute; pointer-events:none; z-index:1; max-width:min(280px,100%); white-space:normal; }
-    #joystick-compare .jc-transfer { position:relative; }
-    #joystick-compare .jc-transfer svg { touch-action:pan-y; }
-    @media(max-width:700px) { #joystick-compare .jc-plots { grid-template-columns:1fr; } #joystick-compare .jc-pair { grid-template-columns:1fr; } }
-    @media(max-width:420px) { #joystick-compare .jc-grid-settings { grid-template-columns:1fr; } }
-  &lt;/style&gt;
-  &lt;h2 class=&quot;jc-head&quot;&gt;Joystick input → output&lt;/h2&gt;
-  &lt;div class=&quot;viz-controls&quot;&gt;
-    &lt;label class=&quot;form-label&quot;&gt;Comparison
-      &lt;select class=&quot;form-select&quot; id=&quot;jc-preset&quot;&gt;
-        &lt;option value=&quot;focus&quot;&gt;Exterior mapping · matched settings&lt;/option&gt;
-        &lt;option value=&quot;center&quot;&gt;Center recovery · matched exterior&lt;/option&gt;
-        &lt;option value=&quot;defaults&quot;&gt;Decoupled defaults · matched DS4&lt;/option&gt;
-        &lt;option value=&quot;asymmetric&quot;&gt;Separate X / Y strips&lt;/option&gt;
-        &lt;option value=&quot;custom&quot;&gt;Custom settings&lt;/option&gt;
-      &lt;/select&gt;
-    &lt;/label&gt;
-    &lt;label class=&quot;form-label&quot;&gt;Plot view
-      &lt;select class=&quot;form-select&quot; id=&quot;jc-view&quot;&gt;&lt;option value=&quot;output&quot;&gt;Mapped input ring&lt;/option&gt;&lt;option value=&quot;regions&quot;&gt;Input deadzone &amp;amp; cardinal regions&lt;/option&gt;&lt;/select&gt;
-    &lt;/label&gt;
-    &lt;label class=&quot;form-label&quot;&gt;Plot scale&lt;select class=&quot;form-select&quot; id=&quot;jc-zoom&quot;&gt;&lt;option value=&quot;1&quot;&gt;Full travel · ±1&lt;/option&gt;&lt;option value=&quot;0.3&quot;&gt;Center detail · ±0.3&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;
-  &lt;/div&gt;
-  &lt;div class=&quot;jc-pair&quot;&gt;
-    &lt;div class=&quot;jc-field&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;jc-radius&quot;&gt;Input radius &lt;output id=&quot;jc-radius-value&quot; class=&quot;tabular-nums&quot;&gt;&lt;/output&gt;&lt;/label&gt;&lt;input id=&quot;jc-radius&quot; class=&quot;form-range&quot; type=&quot;range&quot; min=&quot;0&quot; max=&quot;1&quot; step=&quot;0.001&quot; value=&quot;0.65&quot;&gt;&lt;/div&gt;
-    &lt;div class=&quot;jc-field&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;jc-angle&quot;&gt;Input angle · E = 0°, N = 90° &lt;output id=&quot;jc-angle-value&quot; class=&quot;tabular-nums&quot;&gt;&lt;/output&gt;&lt;/label&gt;&lt;input id=&quot;jc-angle&quot; class=&quot;form-range&quot; type=&quot;range&quot; min=&quot;-180&quot; max=&quot;180&quot; step=&quot;0.1&quot; value=&quot;25&quot;&gt;&lt;/div&gt;
-  &lt;/div&gt;
-  &lt;div class=&quot;jc-plots&quot;&gt;
-    &lt;section class=&quot;jc-plot&quot;&gt;&lt;h3&gt;Raw input · drag to move&lt;/h3&gt;&lt;svg id=&quot;jc-raw&quot; class=&quot;cursor-interaction&quot; role=&quot;img&quot; aria-label=&quot;Raw input plane. Drag to change the joystick position, or use the radius and angle sliders.&quot;&gt;&lt;/svg&gt;&lt;div id=&quot;jc-raw-value&quot; class=&quot;jc-readout text-small tabular-nums&quot;&gt;&lt;/div&gt;&lt;/section&gt;
-    &lt;section class=&quot;jc-plot&quot;&gt;&lt;h3&gt;DS4Windows&lt;/h3&gt;&lt;svg id=&quot;jc-ds4&quot; role=&quot;img&quot; aria-label=&quot;DS4Windows joystick mapping&quot;&gt;&lt;/svg&gt;&lt;div id=&quot;jc-ds4-value&quot; class=&quot;jc-readout text-small tabular-nums&quot;&gt;&lt;/div&gt;&lt;/section&gt;
-    &lt;section class=&quot;jc-plot&quot;&gt;&lt;h3&gt;Updated remapper&lt;/h3&gt;&lt;svg id=&quot;jc-rl&quot; role=&quot;img&quot; aria-label=&quot;Updated remapper DecoupledAxial left stick mapping&quot;&gt;&lt;/svg&gt;&lt;div id=&quot;jc-rl-value&quot; class=&quot;jc-readout text-small tabular-nums&quot;&gt;&lt;/div&gt;&lt;/section&gt;
-  &lt;/div&gt;
-  &lt;div class=&quot;jc-legend text-small&quot; id=&quot;jc-map-legend&quot;&gt;&lt;/div&gt;
-  &lt;div id=&quot;jc-selection&quot; class=&quot;text-small tabular-nums&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;
-  &lt;hr&gt;
-  &lt;div class=&quot;jc-pair&quot;&gt;
-    &lt;section&gt;&lt;h3&gt;DS4Windows settings&lt;/h3&gt;
-      &lt;label class=&quot;form-label&quot;&gt;Deadzone type&lt;select class=&quot;form-select&quot; id=&quot;jc-mode&quot;&gt;&lt;option value=&quot;axial&quot;&gt;Axial · rectangular center + cardinal strips&lt;/option&gt;&lt;option value=&quot;radial&quot;&gt;Radial · circular center&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;
-      &lt;div id=&quot;jc-ds-dead&quot;&gt;&lt;/div&gt;
-      &lt;label class=&quot;form-check&quot;&gt;&lt;input class=&quot;form-check-input&quot; id=&quot;jc-square&quot; type=&quot;checkbox&quot;&gt;&lt;span class=&quot;form-check-label&quot;&gt;Square Stick&lt;/span&gt;&lt;/label&gt;
-      &lt;div id=&quot;jc-roundness-field&quot; class=&quot;jc-field&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;jc-roundness&quot;&gt;Square roundness &lt;span class=&quot;jc-muted&quot;&gt;0–1000&lt;/span&gt;&lt;/label&gt;&lt;input class=&quot;form-control&quot; id=&quot;jc-roundness&quot; type=&quot;number&quot; min=&quot;0&quot; max=&quot;1000&quot; step=&quot;0.1&quot; value=&quot;5&quot; data-tooltip=&quot;0 applies full circle-to-square scaling at every radius. Higher values concentrate expansion near the rim.&quot;&gt;&lt;/div&gt;
-      &lt;details&gt;&lt;summary class=&quot;cursor-interaction&quot;&gt;More DS4Windows settings&lt;/summary&gt;&lt;div id=&quot;jc-ds-advanced&quot;&gt;&lt;/div&gt;
-        &lt;label class=&quot;form-label&quot;&gt;Output curve&lt;select id=&quot;jc-curve&quot; class=&quot;form-select&quot;&gt;&lt;option value=&quot;0&quot;&gt;Linear&lt;/option&gt;&lt;option value=&quot;1&quot;&gt;Enhanced precision&lt;/option&gt;&lt;option value=&quot;2&quot;&gt;Quadratic&lt;/option&gt;&lt;option value=&quot;3&quot;&gt;Cubic&lt;/option&gt;&lt;option value=&quot;4&quot;&gt;Ease-out quadratic&lt;/option&gt;&lt;option value=&quot;5&quot;&gt;Ease-out cubic&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;
-      &lt;/details&gt;
-    &lt;/section&gt;
-    &lt;section&gt;&lt;h3&gt;Remapper · DecoupledAxial&lt;/h3&gt;&lt;div id=&quot;jc-rl-controls&quot;&gt;&lt;/div&gt;
-      &lt;label class=&quot;form-check&quot;&gt;&lt;input class=&quot;form-check-input&quot; id=&quot;jc-rl-square&quot; type=&quot;checkbox&quot;&gt;&lt;span class=&quot;form-check-label&quot;&gt;Square Stick&lt;/span&gt;&lt;/label&gt;
-      &lt;div id=&quot;jc-rl-roundness-field&quot; class=&quot;jc-field&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;jc-rl-roundness&quot;&gt;Square roundness &lt;span class=&quot;jc-muted&quot;&gt;0–1000&lt;/span&gt;&lt;/label&gt;&lt;input class=&quot;form-control&quot; id=&quot;jc-rl-roundness&quot; type=&quot;number&quot; min=&quot;0&quot; max=&quot;1000&quot; step=&quot;0.1&quot; value=&quot;0&quot; data-tooltip=&quot;0 applies full squaring at every radius. Higher values retain a rounder center.&quot;&gt;&lt;/div&gt;
-      &lt;details&gt;&lt;summary class=&quot;cursor-interaction&quot;&gt;X / Y output settings&lt;/summary&gt;&lt;div id=&quot;jc-rl-advanced&quot;&gt;&lt;/div&gt;&lt;/details&gt;
-      &lt;div class=&quot;text-small jc-muted&quot;&gt;Left stick · Linear response&lt;/div&gt;
-    &lt;/section&gt;
-  &lt;/div&gt;
-  &lt;div id=&quot;jc-error&quot; role=&quot;alert&quot; class=&quot;text-destructive&quot; hidden&gt;&lt;/div&gt;
-  &lt;hr&gt;
-  &lt;div class=&quot;jc-pair&quot;&gt;
-    &lt;section class=&quot;jc-plot jc-transfer&quot;&gt;&lt;h3&gt;Angle response · selected radius&lt;/h3&gt;&lt;svg id=&quot;jc-angle-chart&quot; role=&quot;img&quot; aria-label=&quot;Input angle versus output angle at the selected radius&quot;&gt;&lt;/svg&gt;&lt;/section&gt;
-    &lt;section class=&quot;jc-plot jc-transfer&quot;&gt;&lt;h3&gt;Travel response · selected angle&lt;/h3&gt;&lt;svg id=&quot;jc-travel-chart&quot; role=&quot;img&quot; aria-label=&quot;Input radius versus largest absolute output axis at the selected angle&quot;&gt;&lt;/svg&gt;&lt;/section&gt;
-  &lt;/div&gt;
-  &lt;div class=&quot;jc-legend text-small&quot; id=&quot;jc-series-legend&quot;&gt;&lt;/div&gt;
-  &lt;div class=&quot;text-small jc-muted&quot;&gt;Normalized axes · DS4 byte quantization included · Remapper floating point → signed 16-bit · Other DS4 transforms disabled&lt;/div&gt;
-  &lt;div class=&quot;jc-tooltip tooltip&quot; role=&quot;tooltip&quot; hidden&gt;&lt;/div&gt;
+&lt;style&gt;
+#joystick-compare {color:var(--foreground);font:14px system-ui;max-width:1500px;margin:auto}
+#joystick-compare .profiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+#joystick-compare .controls{display:flex;flex-wrap:wrap;gap:20px;align-items:center;margin:20px 0}
+#joystick-compare label{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:10px 0}
+#joystick-compare input[type=number]{width:85px;padding:5px;color:var(--foreground);background:var(--background);border:1px solid var(--border);border-radius:4px}
+#joystick-compare input[type=range]{width:150px}
+#joystick-compare select,#joystick-compare button{font:inherit;padding:6px;color:var(--foreground);background:var(--background);border:1px solid var(--border);border-radius:4px}
+#joystick-compare svg{display:block;width:100%;touch-action:none;color:var(--foreground)}
+#joystick-compare h3{margin:10px 0}#joystick-compare h4{margin:20px 0 8px}
+#joystick-compare .readout{font-variant-numeric:tabular-nums;min-height:42px}
+#joystick-compare .error{color:var(--destructive);min-height:40px}
+#joystick-compare .charts{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:25px}
+#joystick-compare .muted{color:var(--muted-foreground)}
+#joystick-compare .legend{display:flex;gap:20px;flex-wrap:wrap;margin:12px 0}
+@media(max-width:760px){#joystick-compare .profiles,#joystick-compare .charts{grid-template-columns:1fr}}
+&lt;/style&gt;
+&lt;h2&gt;Compare stick profiles&lt;/h2&gt;
+&lt;p class=&quot;muted&quot;&gt;Move the input on any plot or use the sliders. Each profile has its own settings below.&lt;/p&gt;
+&lt;div class=&quot;controls&quot;&gt;
+&lt;label&gt;Input radius &lt;input id=&quot;jc-radius&quot; type=&quot;range&quot; min=&quot;0&quot; max=&quot;1&quot; step=&quot;0.001&quot; value=&quot;0.65&quot;&gt;&lt;output id=&quot;jc-radius-value&quot;&gt;&lt;/output&gt;&lt;/label&gt;
+&lt;label&gt;Angle &lt;input id=&quot;jc-angle&quot; type=&quot;range&quot; min=&quot;-180&quot; max=&quot;180&quot; step=&quot;0.1&quot; value=&quot;25&quot;&gt;&lt;output id=&quot;jc-angle-value&quot;&gt;&lt;/output&gt;&lt;/label&gt;
+&lt;label&gt;View &lt;select id=&quot;jc-view&quot;&gt;&lt;option value=&quot;output&quot;&gt;Mapped ring&lt;/option&gt;&lt;option value=&quot;regions&quot;&gt;Deadzone and cardinal regions&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;
+&lt;label&gt;Scale &lt;select id=&quot;jc-zoom&quot;&gt;&lt;option value=&quot;1&quot;&gt;Full travel&lt;/option&gt;&lt;option value=&quot;0.3&quot;&gt;Center detail&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;
+&lt;button id=&quot;jc-reset&quot; type=&quot;button&quot;&gt;Reset all profiles&lt;/button&gt;
+&lt;/div&gt;
+&lt;div class=&quot;legend&quot;&gt;&lt;span&gt;○ Input&lt;/span&gt;&lt;span&gt;● Output&lt;/span&gt;&lt;span class=&quot;muted&quot;&gt;E = 0° · N = 90° · Axes normalized to ±1&lt;/span&gt;&lt;/div&gt;
+&lt;div class=&quot;profiles&quot; id=&quot;jc-profiles&quot;&gt;&lt;/div&gt;
+&lt;div class=&quot;charts&quot;&gt;&lt;section&gt;&lt;h3&gt;Angle response · selected radius&lt;/h3&gt;&lt;svg id=&quot;jc-angle-chart&quot; role=&quot;img&quot; aria-label=&quot;Input angle versus output angle for all three profiles&quot;&gt;&lt;/svg&gt;&lt;/section&gt;&lt;section&gt;&lt;h3&gt;Travel response · selected angle&lt;/h3&gt;&lt;svg id=&quot;jc-travel-chart&quot; role=&quot;img&quot; aria-label=&quot;Input radius versus largest output axis for all three profiles&quot;&gt;&lt;/svg&gt;&lt;/section&gt;&lt;/div&gt;
+&lt;div class=&quot;legend&quot; id=&quot;jc-legend&quot;&gt;&lt;/div&gt;
+&lt;p class=&quot;muted&quot;&gt;These controls only affect this comparison, not your saved app settings.&lt;/p&gt;
 &lt;/div&gt;
 &lt;script&gt;
-// Static mapping port; DS4Windows portions GPL-3.0-or-later, Copyright (C) 2023 Travis Nickles.
-// DS4Windows 43c4aed: Mapping.cs, Xbox360OutDevice.cs. Remapper: current Transform.ApplyStick DecoupledAxial implementation.
+// RLRemapper mapping port. DS4Windows-derived math: GPL-3.0-or-later, Copyright (C) 2023 Travis Nickles.
 globalThis.JoystickCompare = (() =&gt; {
-  const clamp=(v,a,b)=&gt;Math.min(b,Math.max(a,v));
-  const byte=v=&gt;Math.trunc(clamp(v,0,255));
-  const cap=v=&gt;v&gt;=128?127:128;
-  const rawByte=v=&gt;Math.round(128+clamp(v,-1,1)*(v&gt;=0?127:128));
-  const normalize=v=&gt;(v-128)/cap(v);
-  function axis(v,c) {
-    if(c.deadzone===0 &amp;&amp; c.antiDeadzone===0 &amp;&amp; c.maxZone===100 &amp;&amp; c.maxOutput===100) return v;
-    if(c.deadzone&gt;0 &amp;&amp; Math.abs(v-128)&lt;=c.deadzone) return 128;
-    const side=v&gt;=128?127:-128, ratio=c.maxZone/100;
-    const dead=c.deadzone/127*side;
-    let t=(clamp(v,128-128*ratio,128+127*ratio)-128-dead)/((ratio*side+128-128)-dead);
-    if(c.maxOutput!==100) t=clamp(t,0,Math.min(c.maxOutput/100/0.99,1));
-    return t&gt;0?byte(((1-c.antiDeadzone*.01)*t+c.antiDeadzone*.01)*side+128):128;
-  }
-  function squareDS4(x,y,roundness) {
-    let angle=Math.atan2(y,-x)+Math.PI, co=Math.cos(angle), scale;
-    const p=Math.PI/4;
-    if(angle&lt;=p || angle&gt;7*p) scale=1/co;
-    else if(angle&lt;=3*p) scale=1/Math.sin(angle);
-    else if(angle&lt;=5*p) scale=-1/co;
-    else scale=-1/Math.sin(angle);
-    const factor=Math.pow(x/co,roundness);
-    return [clamp(x+(x*scale-x)*factor,-1,1),clamp(y+(y*scale-y)*factor,-1,1)];
-  }
-  function ds4(x,y,c) {
-    const raw=[rawByte(x),rawByte(-y)]; let [bx,by]=raw;
-    if(c.mode===&#x27;axial&#x27;) { bx=axis(bx,c.xAxis); by=axis(by,c.yAxis); }
-    else {
-      const interpret=c.antiDeadzone&gt;0 || c.maxZone!==100 || c.maxOutput!==100 || c.maxOutputForce || c.verticalScale!==100;
-      if(c.deadzone&gt;0 || interpret) {
-        const r2=(bx-128)**2+(by-128)**2;
-        if(c.deadzone&gt;0 &amp;&amp; r2&lt;=c.deadzone**2) bx=by=128;
-        else {
-          const angle=Math.atan2(-(by-128),bx-128), dir=[Math.abs(Math.cos(angle)),Math.abs(Math.sin(angle))];
-          const vals=[bx,by].map((v,i)=&gt;{
-            const side=v&gt;=128?127:-128, ratio=c.maxZone/100;
-            const dead=dir[i]*(c.deadzone/127)*side;
-            let t=(clamp(v,128-128*ratio,128+127*ratio)-128-dead)/((ratio*side+128-128)-dead);
-            if(i===1 &amp;&amp; c.verticalScale!==100) t=clamp(t*c.verticalScale/100,0,1);
-            if(c.maxOutput!==100 || c.maxOutputForce) t=clamp(t,0,Math.min(dir[i]*c.maxOutput/100/0.99,1));
-            const anti=(c.antiDeadzone*.01)*dir[i];
-            return t&gt;0?byte(((1-anti)*t+anti)*side+128):128;
-          }); [bx,by]=vals;
-        }
-      }
-    }
-    if(c.square &amp;&amp; (bx!==128 || by!==128)) {
-      const cx=cap(bx),cy=cap(by);
-      const p=squareDS4((bx-128)/cx,(by-128)/cy,c.roundness);
-      bx=byte(p[0]*cx+128); by=byte(p[1]*cy+128);
-    }
-    if(c.curve&gt;0 &amp;&amp; (bx!==128 || by!==128)) {
-      const angle=Math.atan2(-(by-128),bx-128);
-      const caps=c.mode===&#x27;radial&#x27;?[Math.max(Math.abs(Math.cos(angle))*cap(bx),Math.abs(bx-128)),Math.max(Math.abs(Math.sin(angle))*cap(by),Math.abs(by-128))]:[cap(bx),cap(by)];
-      [bx,by]=[bx,by].map((v,i)=&gt;{
-        const t=caps[i]&gt;0?(v-128)/caps[i]:0,a=Math.abs(t); let z=a;
-        if(c.curve===1) z=a&lt;=.4?.8*a:a&lt;=.75?a-.08:1.32*a-.32;
-        else if(c.curve===2) z=a*a;
-        else if(c.curve===3) z=a*a*a;
-        else if(c.curve===4) z=-a*(a-2);
-        else if(c.curve===5) z=(a-1)**3+1;
-        return byte(z*(t&gt;=0?1:-1)*caps[i]+128);
-      });
-    }
-    const out=[normalize(bx),-normalize(by)];
-    return {rawBytes:raw,bytes:[bx,by],out,stick:[axisScale(bx,false),axisScale(by,true)]};
-  }
-  function axisScale(v,flip) {
-    const f=Math.fround,delta=v-128;
-    let t=f(delta*f(1/(delta&gt;=0?127:128)));
-    if(flip)t=-t;
-    t=f(f(t+1)*.5);
-    return Math.trunc(f(f(t*65535)-32768));
-  }
+ const clamp=(v,a,b)=&gt;Math.min(b,Math.max(a,v));
   function rl(x,y,c) {
     y=-y; const r=Math.sqrt(x*x+y*y);
     if(r&lt;c.inner || r===0) return {out:[0,0],stick:[0,0]};
@@ -1961,7 +1839,9 @@ globalThis.JoystickCompare = (() =&gt; {
         const rad=mapped*Math.PI/180; x=Math.cos(rad)*r;y=Math.sin(rad)*r;
       }
     }
-    if(x!==0 &amp;&amp; y!==0) { const k=Math.sqrt(x*x+y*y)/Math.max(Math.abs(x),Math.abs(y)); x*=k;y*=k; }
+    const maxZone=c.maxZone??1,square=c.square??true;
+    if(maxZone!==1||!square){const magnitude=Math.hypot(x,y);if(magnitude&gt;0){const scale=Math.min(magnitude/maxZone,1)/magnitude;x*=scale;y*=scale;}}
+    if(square &amp;&amp; x!==0 &amp;&amp; y!==0) { const k=Math.sqrt(x*x+y*y)/Math.max(Math.abs(x),Math.abs(y)); x*=k;y*=k; }
     const out=[clamp(x,-1,1),clamp(-y,-1,1)];
     return {out,stick:out.map(v=&gt;Math.trunc(v*32767))};
   }
@@ -1997,224 +1877,106 @@ globalThis.JoystickCompare = (() =&gt; {
     const out=[clamp(ax,-1,1),clamp(ay,-1,1)];
     return {out,stick:out.map(v=&gt;Math.trunc(v*32767))};
   }
-  return {ds4,rl,decoupled,rawByte,axisScale};
+  function remapper(x,y,c) {
+    if((c.mappingMode===&#x27;Angular&#x27;||c.mappingMode===&#x27;LegacyAngular&#x27;))return rl(x,y,{inner:c.innerDeadzone,outer:c.outerRingThreshold,threshold:c.snapAngleDeg,maxZone:c.angularMaxZone,square:c.angularSquareOutput});
+    return c.mappingMode===&#x27;Radial&#x27;?radial(x,y,c):decoupled(x,y,c);
+  }
+  function radial(x,y,c) {
+    if(!Number.isFinite(x)||!Number.isFinite(y))return {out:[0,0],stick:[0,0]};
+    x=clamp(x,-1,1);y=clamp(y,-1,1);
+    const radius=Math.sqrt(x*x+y*y);
+    if(radius&lt;=c.innerDeadzone||radius===0)return {out:[0,0],stick:[0,0]};
+    const t=clamp((radius-c.innerDeadzone)/(c.radialMaxZone-c.innerDeadzone),0,1);
+    const magnitude=c.radialAntiDeadzone+(c.radialMaxOutput-c.radialAntiDeadzone)*t;
+    let ax=x/radius*magnitude,ay=y/radius*magnitude;
+    if(c.squareStick&amp;&amp;ax!==0&amp;&amp;ay!==0) {
+      const r=Math.sqrt(ax*ax+ay*ay),expansion=r/Math.max(Math.abs(ax),Math.abs(ay)),scale=1+(expansion-1)*Math.pow(r,c.squareRoundness);
+      ax=clamp(ax*scale,-1,1);ay=clamp(ay*scale,-1,1);
+    }
+    const out=[clamp(ax,-1,1),clamp(ay,-1,1)];
+    return {out,stick:out.map(v=&gt;Math.trunc(v*32767))};
+  }
+  return {rl,decoupled,radial,remapper};
 })();
 &lt;/script&gt;
-&lt;script src=&quot;https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js&quot;&gt;&lt;/script&gt;
 &lt;script&gt;
 (() =&gt; {
-  const root=document.getElementById(&#x27;joystick-compare&#x27;), $=id=&gt;root.querySelector(&#x27;#jc-&#x27;+id), M=globalThis.JoystickCompare;
-  const S1=&#x27;var(--viz-series-1)&#x27;,S2=&#x27;var(--viz-series-2)&#x27;,neutral=&#x27;var(--border)&#x27;,ink=&#x27;var(--foreground)&#x27;;
-  const clone=v=&gt;JSON.parse(JSON.stringify(v)), deg=Math.PI/180;
-  const axisDefault=()=&gt;({deadzone:20,antiDeadzone:0,maxZone:50,maxOutput:100});
-  function makeState(preset=&#x27;focus&#x27;) {
-    const ds4={mode:&#x27;axial&#x27;,deadzone:13,antiDeadzone:0,maxZone:100,maxOutput:100,verticalScale:100,maxOutputForce:false,square:true,roundness:0,curve:0,xAxis:axisDefault(),yAxis:axisDefault()};
-    const rl={innerDeadzone:.1,xSnapWidth:20/127,ySnapWidth:20/127,centerBlendWidth:.05,xAntiDeadzone:0,yAntiDeadzone:0,xMaxZone:.5,yMaxZone:.5,xMaxOutput:1,yMaxOutput:1,squareStick:true,squareRoundness:0};
-    let radius=.7287949045956205,angle=-129.84035797054716,zoom=1;
-    if(preset===&#x27;center&#x27;) {radius=.15;angle=40;zoom=.3;}
-    if(preset===&#x27;defaults&#x27;) {ds4.xAxis.deadzone=ds4.yAxis.deadzone=13;ds4.xAxis.maxZone=ds4.yAxis.maxZone=100;rl.innerDeadzone=.05;rl.xSnapWidth=rl.ySnapWidth=.1;rl.xMaxZone=rl.yMaxZone=1;radius=.12;angle=35;zoom=.3;}
-    if(preset===&#x27;asymmetric&#x27;) {ds4.xAxis.deadzone=10;ds4.yAxis.deadzone=25;rl.xSnapWidth=10/127;rl.ySnapWidth=25/127;rl.innerDeadzone=.04;radius=.2;angle=40;zoom=.3;}
-    return {version:2,preset,view:&#x27;output&#x27;,zoom,radius,angle,ds4,rl,visible:{raw:true,ds4:true,rl:true}};
-  }
-  let state=makeState(&#x27;center&#x27;), frame=0, chartRows={}, drag=false;
-  function applySaved(saved) {
-    const s=saved?.privateContent?.state;
-    if(!s || s.version!==2 || !s.ds4 || !s.rl) return false;
-    state={...makeState(),...clone(s)};return true;
-  }
-  applySaved(window.openai?.widgetState);
-  function persist() {
-    if(window.openai?.setWidgetState) window.openai.setWidgetState({modelContent:{input:{radius:state.radius,angle:state.angle},ds4:state.ds4,remapper:{mappingMode:&#x27;DecoupledAxial&#x27;,...state.rl},preset:state.preset,view:state.view,plotScale:state.zoom},privateContent:{state}}).catch(()=&gt;{});
-  }
-  function changed() {state.preset=&#x27;custom&#x27;;$(&#x27;preset&#x27;).value=&#x27;custom&#x27;;schedule();}
-  function range(parent,id,label,min,max,step,value,format,onChange,tip) {
-    const field=document.createElement(&#x27;div&#x27;);field.className=&#x27;jc-field&#x27;;
-    const lab=document.createElement(&#x27;label&#x27;);lab.className=&#x27;form-label&#x27;;lab.htmlFor=&#x27;jc-&#x27;+id;
-    const name=document.createElement(&#x27;span&#x27;);name.textContent=label;
-    const out=document.createElement(&#x27;output&#x27;);out.className=&#x27;tabular-nums&#x27;;out.textContent=format(value);
-    lab.append(name,out);if(tip)lab.dataset.tooltip=tip;
-    const input=document.createElement(&#x27;input&#x27;);Object.assign(input,{type:&#x27;range&#x27;,min,max,step,value,id:&#x27;jc-&#x27;+id,className:&#x27;form-range&#x27;});
-    input.addEventListener(&#x27;input&#x27;,()=&gt;{const n=Number(input.value);out.textContent=format(n);onChange(n);changed();});input.addEventListener(&#x27;change&#x27;,persist);
-    field.append(lab,input);parent.append(field);return input;
-  }
-  const pct=v=&gt;(v/100).toFixed(2),dz=v=&gt;(v/127).toFixed(3)+&#x27; (&#x27;+v+&#x27;/127)&#x27;,fixed=v=&gt;v.toFixed(3);
-  function settings() {
-    const d=state.ds4; $(&#x27;mode&#x27;).value=d.mode;$(&#x27;square&#x27;).checked=d.square;$(&#x27;roundness&#x27;).value=d.roundness;$(&#x27;roundness-field&#x27;).hidden=!d.square;$(&#x27;curve&#x27;).value=d.curve;
-    $(&#x27;preset&#x27;).value=state.preset;$(&#x27;view&#x27;).value=state.view;$(&#x27;zoom&#x27;).value=state.zoom;
-    const dead=$(&#x27;ds-dead&#x27;),advanced=$(&#x27;ds-advanced&#x27;);dead.replaceChildren();advanced.replaceChildren();
-    const dzTip=&#x27;Axis cutoff, in DS4 byte steps. Axial deadzones also set cardinal strip width and rescale each surviving axis.&#x27;;
-    if(d.mode===&#x27;axial&#x27;) {
-      for(const [key,label] of [[&#x27;xAxis&#x27;,&#x27;X&#x27;],[&#x27;yAxis&#x27;,&#x27;Y&#x27;]]) range(dead,&#x27;dead-&#x27;+key,label+&#x27; deadzone&#x27;,0,127,1,d[key].deadzone,dz,v=&gt;d[key].deadzone=v,dzTip);
-      const grid=document.createElement(&#x27;div&#x27;);grid.className=&#x27;jc-grid-settings&#x27;;advanced.append(grid);
-      for(const [key,label] of [[&#x27;xAxis&#x27;,&#x27;X axis&#x27;],[&#x27;yAxis&#x27;,&#x27;Y axis&#x27;]]) {
-        const col=document.createElement(&#x27;div&#x27;);grid.append(col);
-        for(const [prop,name,tip] of [[&#x27;antiDeadzone&#x27;,&#x27;Anti-deadzone&#x27;,&#x27;Adds a nonzero output floor after the axis deadzone.&#x27;],[&#x27;maxZone&#x27;,&#x27;Max zone&#x27;,&#x27;Input axis travel that reaches full scale, before the output cap and anti-deadzone. Must exceed the deadzone.&#x27;],[&#x27;maxOutput&#x27;,&#x27;Max output&#x27;,&#x27;Caps the rescaled axis BEFORE anti-deadzone; it is not always the final output ceiling.&#x27;]]) range(col,key+&#x27;-&#x27;+prop,label+&#x27; · &#x27;+name,0,100,1,d[key][prop],pct,v=&gt;d[key][prop]=v,tip);
-      }
-    } else {
-      range(dead,&#x27;dead-radial&#x27;,&#x27;Radial deadzone&#x27;,0,127,1,d.deadzone,dz,v=&gt;d.deadzone=v,&#x27;Circular center cutoff, followed by direction-weighted component rescaling.&#x27;);
-      for(const [prop,name,tip] of [[&#x27;antiDeadzone&#x27;,&#x27;Anti-deadzone&#x27;,&#x27;Adds an angle-weighted minimum output after deadzone processing.&#x27;],[&#x27;maxZone&#x27;,&#x27;Max zone&#x27;,&#x27;Per-axis saturation input, before output limiting and anti-deadzone. Must exceed the deadzone.&#x27;],[&#x27;maxOutput&#x27;,&#x27;Max output&#x27;,&#x27;Angle-weighted cap before anti-deadzone. A 100% cap is skipped unless Force is enabled.&#x27;]]) range(advanced,prop,name,0,100,1,d[prop],pct,v=&gt;d[prop]=v,tip);
-      range(advanced,&#x27;verticalScale&#x27;,&#x27;Vertical scale&#x27;,0,400,1,d.verticalScale,pct,v=&gt;d.verticalScale=v,&#x27;Scales the vertical component before max-output and anti-deadzone processing.&#x27;);
-      const lab=document.createElement(&#x27;label&#x27;);lab.className=&#x27;form-check&#x27;;
-      const input=document.createElement(&#x27;input&#x27;);input.type=&#x27;checkbox&#x27;;input.className=&#x27;form-check-input&#x27;;input.checked=d.maxOutputForce;input.addEventListener(&#x27;change&#x27;,()=&gt;{d.maxOutputForce=input.checked;changed();persist();});
-      const span=document.createElement(&#x27;span&#x27;);span.className=&#x27;form-check-label&#x27;;span.textContent=&#x27;Force max-output limit&#x27;;lab.append(input,span);advanced.append(lab);
-    }
-    const rem=$(&#x27;rl-controls&#x27;),r=state.rl;rem.replaceChildren();
-    range(rem,&#x27;inner&#x27;,&#x27;Inner deadzone&#x27;,0,.99,.001,r.innerDeadzone,fixed,v=&gt;r.innerDeadzone=v,&#x27;Circular zero-output region, independent of the axial strips.&#x27;);
-    range(rem,&#x27;x-strip&#x27;,&#x27;X snap width · north/south&#x27;,0,.99,.001,r.xSnapWidth,fixed,v=&gt;r.xSnapWidth=v,&#x27;Suppresses X in a constant-width vertical strip outside the center transition.&#x27;);
-    range(rem,&#x27;y-strip&#x27;,&#x27;Y snap width · east/west&#x27;,0,.99,.001,r.ySnapWidth,fixed,v=&gt;r.ySnapWidth=v,&#x27;Suppresses Y in a constant-width horizontal strip outside the center transition.&#x27;);
-    range(rem,&#x27;blend&#x27;,&#x27;Center blend width&#x27;,.000001,1,.001,r.centerBlendWidth,fixed,v=&gt;r.centerBlendWidth=v,&#x27;Transition around the strip overlap and inner circle. Restores diagonal movement near center and converges to ordinary axial mapping.&#x27;);
-    $(&#x27;rl-square&#x27;).checked=r.squareStick;$(&#x27;rl-roundness&#x27;).value=r.squareRoundness;$(&#x27;rl-roundness-field&#x27;).hidden=!r.squareStick;
-    const advancedRL=$(&#x27;rl-advanced&#x27;);advancedRL.replaceChildren();
-    const gridRL=document.createElement(&#x27;div&#x27;);gridRL.className=&#x27;jc-grid-settings&#x27;;advancedRL.append(gridRL);
-    for(const [key,label] of [[&#x27;x&#x27;,&#x27;X axis&#x27;],[&#x27;y&#x27;,&#x27;Y axis&#x27;]]) {
-      const col=document.createElement(&#x27;div&#x27;);gridRL.append(col);
-      for(const [prop,name,tip] of [[&#x27;AntiDeadzone&#x27;,&#x27;Anti-deadzone&#x27;,&#x27;Minimum active output, fading for components that become zero at a cardinal strip.&#x27;],[&#x27;MaxZone&#x27;,&#x27;Max zone&#x27;,&#x27;Input travel reaching full scaled output. Must leave space for the center blend.&#x27;],[&#x27;MaxOutput&#x27;,&#x27;Max output&#x27;,&#x27;Cap before anti-deadzone and squaring; later stages can raise final output above this value.&#x27;]]) range(col,&#x27;rl-&#x27;+key+prop,label+&#x27; · &#x27;+name,0,1,.001,r[key+prop],fixed,v=&gt;r[key+prop]=v,tip);
-    }
-  }
-  function valid() {
-    const d=state.ds4,axes=d.mode===&#x27;axial&#x27;?[d.xAxis,d.yAxis]:[d];
-    const r=state.rl;let error=&#x27;&#x27;;
-    if(!axes.every(c=&gt;c.maxZone/100&gt;c.deadzone/127)) error=&#x27;Set DS4 Max zone above its deadzone.&#x27;;
-    else if(r.xSnapWidth+r.centerBlendWidth&gt;=r.xMaxZone||r.ySnapWidth+r.centerBlendWidth&gt;=r.yMaxZone||r.innerDeadzone+r.centerBlendWidth&gt;=Math.min(r.xMaxZone,r.yMaxZone)) error=&#x27;Remapper: snap width + blend width must be below the matching max zone; inner deadzone + blend width must be below both max zones.&#x27;;
-    $(&#x27;error&#x27;).hidden=!error;$(&#x27;error&#x27;).textContent=error;
-    return !error;
-  }
-  function inputPoint(r=state.radius,a=state.angle) {return [r*Math.cos(a*deg),r*Math.sin(a*deg)];}
-  function angleOf(p) {return Math.hypot(...p)&lt;1e-10?null:Math.atan2(p[1],p[0])/deg;}
-  const maxOf=p=&gt;Math.max(Math.abs(p[0]),Math.abs(p[1]));
-  function info(p) {const a=angleOf(p);return &#x27;X &#x27;+p[0].toFixed(3)+&#x27; · Y &#x27;+p[1].toFixed(3)+&#x27;&lt;br&gt;&#x27;+(a===null?&#x27;Centered&#x27;:a.toFixed(1)+&#x27;°&#x27;)+&#x27; · radius &#x27;+Math.hypot(...p).toFixed(3);}
-  function svgEl(tag,attrs={},parent) {const el=document.createElementNS(&#x27;http://www.w3.org/2000/svg&#x27;,tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,v);if(parent)parent.append(el);return el;}
-  function text(svg,x,y,value,attrs={}) {const el=svgEl(&#x27;text&#x27;,{x,y,...attrs},svg);el.textContent=value;return el;}
-  function geometry(svg) {
-    const width=svg.parentElement.getBoundingClientRect().width,left=64,right=20,top=18,bottom=46,size=Math.min(width-left-right,300),height=top+size+bottom;
-    svg.setAttribute(&#x27;viewBox&#x27;,`0 0 ${width} ${height}`);svg.setAttribute(&#x27;height&#x27;,height);
-    const l=left+(width-left-right-size)/2,t=top,z=state.zoom;
-    const X=v=&gt;l+size*(v/z+1)/2,Y=v=&gt;t+size*(1-v/z)/2;
-    return {width,height,size,l,t,X,Y};
-  }
-  function plane(svg,kind) {
-    svg.replaceChildren(); const g=geometry(svg),{X,Y,l,t,size,width,height}=g;
-    const title=svgEl(&#x27;title&#x27;,{},svg);title.textContent=kind===&#x27;raw&#x27;?&#x27;Normalized joystick input&#x27;:kind===&#x27;ds4&#x27;?&#x27;DS4Windows &#x27;+state.view:&#x27;DecoupledAxial &#x27;+state.view;
-    svgEl(&#x27;rect&#x27;,{x:l,y:t,width:size,height:size,fill:&#x27;none&#x27;,stroke:neutral,&#x27;data-chart-frame&#x27;:&#x27;&#x27;},svg);
-    const defs=svgEl(&#x27;defs&#x27;,{},svg),clip=svgEl(&#x27;clipPath&#x27;,{id:&#x27;jc-clip-&#x27;+kind},defs);
-    svgEl(&#x27;rect&#x27;,{x:l,y:t,width:size,height:size},clip);
-    const plot=svgEl(&#x27;g&#x27;,{&#x27;clip-path&#x27;:&#x27;url(#jc-clip-&#x27;+kind+&#x27;)&#x27;},svg),z=state.zoom;
-    if(kind!==&#x27;raw&#x27; &amp;&amp; state.view===&#x27;regions&#x27;) {
-      const n=61,fn=kind===&#x27;ds4&#x27;?M.ds4:M.decoupled,cfg=kind===&#x27;ds4&#x27;?state.ds4:state.rl,color=kind===&#x27;ds4&#x27;?S1:S2;
-      for(let j=0;j&lt;n;j++)for(let i=0;i&lt;n;i++) {
-        const x=z*(-1+2*(i+.5)/n),y=z*(-1+2*(j+.5)/n);if(x*x+y*y&gt;1)continue;
-        const p=fn(x,y,cfg).out,zero=Math.abs(p[0])&lt;1e-10&amp;&amp;Math.abs(p[1])&lt;1e-10,card=Math.abs(p[0])&lt;1e-10||Math.abs(p[1])&lt;1e-10;
-        if(zero||card)svgEl(&#x27;rect&#x27;,{x:X(x)-size/n/2,y:Y(y)-size/n/2,width:size/n+.15,height:size/n+.15,fill:zero?&#x27;var(--muted-foreground)&#x27;:color,opacity:zero?.3:.22},plot);
-      }
-      if(kind===&#x27;rl&#x27;) {
-        const c=state.rl;
-        const boundary=Array.from({length:361},(_,i)=&gt;{const a=i*deg,ux=Math.abs(Math.cos(a)),uy=Math.abs(Math.sin(a)),r=Math.max(c.innerDeadzone+c.centerBlendWidth,Math.min(ux&gt;0?(c.xSnapWidth+c.centerBlendWidth)/ux:Infinity,uy&gt;0?(c.ySnapWidth+c.centerBlendWidth)/uy:Infinity));return [r*Math.cos(a),r*Math.sin(a)];});
-        svgEl(&#x27;path&#x27;,{d:boundary.map((p,i)=&gt;(i?&#x27;L&#x27;:&#x27;M&#x27;)+X(p[0])+&#x27;,&#x27;+Y(p[1])).join(&#x27;&#x27;),fill:&#x27;none&#x27;,stroke:ink,&#x27;stroke-width&#x27;:1,&#x27;stroke-dasharray&#x27;:&#x27;4 3&#x27;},plot);
-        svgEl(&#x27;circle&#x27;,{cx:X(0),cy:Y(0),r:size/2/z*c.innerDeadzone,fill:&#x27;none&#x27;,stroke:ink,&#x27;stroke-width&#x27;:1},plot);
-      }
-    }
-    for(const v of [-z,0,z]) {text(svg,X(v),t+size+18,String(v),{&#x27;text-anchor&#x27;:v===-z?&#x27;start&#x27;:v===z?&#x27;end&#x27;:&#x27;middle&#x27;});text(svg,l-9,Y(v)+4,String(v),{&#x27;text-anchor&#x27;:&#x27;end&#x27;});}
-    svgEl(&#x27;line&#x27;,{x1:X(0),y1:Y(-z),x2:X(0),y2:Y(z),stroke:neutral},plot);
-    svgEl(&#x27;line&#x27;,{x1:X(-z),y1:Y(0),x2:X(z),y2:Y(0),stroke:neutral},plot);
-    svgEl(&#x27;circle&#x27;,{cx:X(0),cy:Y(0),r:size/2/z,fill:&#x27;none&#x27;,stroke:neutral},plot);
-    text(svg,l+size/2,height-3,&#x27;East / X (normalized)&#x27;,{&#x27;text-anchor&#x27;:&#x27;middle&#x27;,class:&#x27;axis-title&#x27;,&#x27;data-axis&#x27;:&#x27;x&#x27;});
-    text(svg,15,t+size/2,&#x27;North / Y (normalized)&#x27;,{transform:`rotate(-90 15 ${t+size/2})`,&#x27;text-anchor&#x27;:&#x27;middle&#x27;,class:&#x27;axis-title&#x27;,&#x27;data-axis&#x27;:&#x27;y&#x27;});
-    const raw=inputPoint();
-    svgEl(&#x27;circle&#x27;,{cx:X(0),cy:Y(0),r:size/2/z*state.radius,fill:&#x27;none&#x27;,stroke:neutral,&#x27;stroke-dasharray&#x27;:&#x27;3 3&#x27;},plot);
-    if(kind===&#x27;raw&#x27;) {
-      svgEl(&#x27;line&#x27;,{x1:X(0),y1:Y(0),x2:X(raw[0]),y2:Y(raw[1]),stroke:ink,&#x27;stroke-width&#x27;:2},plot);
-      svgEl(&#x27;circle&#x27;,{cx:X(raw[0]),cy:Y(raw[1]),r:5,fill:ink},plot);
-    } else {
-      const color=kind===&#x27;ds4&#x27;?S1:S2,fn=kind===&#x27;ds4&#x27;?M.ds4:M.decoupled,cfg=kind===&#x27;ds4&#x27;?state.ds4:state.rl;
-      let p=fn(...raw,cfg).out;
-      if(state.view===&#x27;output&#x27;) {
-        const points=Array.from({length:721},(_,i)=&gt;fn(...inputPoint(state.radius,i/2),cfg).out);
-        const path=points.map((v,i)=&gt;(i?&#x27;L&#x27;:&#x27;M&#x27;)+X(v[0]).toFixed(3)+&#x27;,&#x27;+Y(v[1]).toFixed(3)).join(&#x27;&#x27;);
-        svgEl(&#x27;path&#x27;,{d:path,fill:&#x27;none&#x27;,stroke:color,&#x27;stroke-width&#x27;:1.7,...(kind===&#x27;rl&#x27;?{&#x27;stroke-dasharray&#x27;:&#x27;5 3&#x27;}:{})},plot);
-        svgEl(&#x27;circle&#x27;,{cx:X(raw[0]),cy:Y(raw[1]),r:4,fill:&#x27;none&#x27;,stroke:ink},plot);
-        svgEl(&#x27;line&#x27;,{x1:X(raw[0]),y1:Y(raw[1]),x2:X(p[0]),y2:Y(p[1]),stroke:color,&#x27;stroke-dasharray&#x27;:&#x27;2 3&#x27;},plot);
-      } else p=raw;
-      svgEl(&#x27;line&#x27;,{x1:X(0),y1:Y(0),x2:X(p[0]),y2:Y(p[1]),stroke:color,&#x27;stroke-width&#x27;:2},plot);
-      if(kind===&#x27;rl&#x27;)svgEl(&#x27;rect&#x27;,{x:X(p[0])-4,y:Y(p[1])-4,width:8,height:8,fill:color},plot);
-      else svgEl(&#x27;circle&#x27;,{cx:X(p[0]),cy:Y(p[1]),r:5,fill:color},plot);
-      if(maxOf(p)&gt;z)text(svg,l+size/2,t+13,&#x27;Point outside zoom&#x27;,{&#x27;text-anchor&#x27;:&#x27;middle&#x27;});
-    }
-    if(kind===&#x27;raw&#x27;&amp;&amp;maxOf(raw)&gt;z)text(svg,l+size/2,t+13,&#x27;Point outside zoom&#x27;,{&#x27;text-anchor&#x27;:&#x27;middle&#x27;});
-    svg._geometry=g;
-  }
-  function drawTransfer(svg,kind) {
-    if(!globalThis.d3) {svg.replaceChildren();text(svg,10,25,&#x27;Chart library unavailable&#x27;);return;}
-    const isAngle=kind===&#x27;angle&#x27;,width=svg.parentElement.getBoundingClientRect().width,height=245,margin={left:64,right:24,top:18,bottom:52};
-    svg.setAttribute(&#x27;viewBox&#x27;,`0 0 ${width} ${height}`);svg.setAttribute(&#x27;height&#x27;,height);svg.replaceChildren();
-    const data=Array.from({length:361},(_,i)=&gt;{
-      const x=isAngle?i/4:i/360,p=isAngle?inputPoint(state.radius,x):inputPoint(x);
-      const a=M.ds4(...p,state.ds4).out,b=M.decoupled(...p,state.rl).out;
-      const fixAngle=q=&gt;{const a=angleOf(q);return a===null?null:Math.max(0,Math.min(90,a));};
-      return {x,raw:isAngle?fixAngle(p):maxOf(p),ds4:isAngle?fixAngle(a):maxOf(a),rl:isAngle?fixAngle(b):maxOf(b)};
-    });
-    chartRows[kind]=data;
-    const maxX=isAngle?90:1,maxY=isAngle?90:1;
-    const x=d3.scaleLinear().domain(d3.extent([0,maxX,...data.map(d=&gt;d.x)])).range([margin.left+4,width-margin.right-4]);
-    const y=d3.scaleLinear().domain(d3.extent([0,maxY,...data.flatMap(d=&gt;[d.raw,d.ds4,d.rl]).filter(v=&gt;v!==null)])).range([height-margin.bottom-4,margin.top+4]);
-    const sel=d3.select(svg),frame=sel.append(&#x27;rect&#x27;).attr(&#x27;data-chart-frame&#x27;,&#x27;&#x27;).attr(&#x27;x&#x27;,margin.left).attr(&#x27;y&#x27;,margin.top).attr(&#x27;width&#x27;,width-margin.left-margin.right).attr(&#x27;height&#x27;,height-margin.top-margin.bottom).attr(&#x27;fill&#x27;,&#x27;none&#x27;).attr(&#x27;stroke&#x27;,neutral);
-    const xticks=isAngle?[0,30,60,90]:[0,.5,1],yticks=isAngle?[0,45,90]:[0,.5,1];
-    for(const v of xticks)text(svg,x(v),height-margin.bottom+20,isAngle?v+&#x27;°&#x27;:v,{&#x27;text-anchor&#x27;:v===maxX?&#x27;end&#x27;:v===0?&#x27;start&#x27;:&#x27;middle&#x27;});
-    for(const v of yticks){text(svg,margin.left-9,y(v)+4,isAngle?v+&#x27;°&#x27;:v,{&#x27;text-anchor&#x27;:&#x27;end&#x27;});sel.append(&#x27;line&#x27;).attr(&#x27;x1&#x27;,margin.left).attr(&#x27;x2&#x27;,width-margin.right).attr(&#x27;y1&#x27;,y(v)).attr(&#x27;y2&#x27;,y(v)).attr(&#x27;stroke&#x27;,neutral);}
-    for(const [key,color,dash] of [[&#x27;raw&#x27;,ink,&#x27;2 4&#x27;],[&#x27;ds4&#x27;,S1,null],[&#x27;rl&#x27;,S2,&#x27;5 3&#x27;]]) {
-      if(!state.visible[key])continue;
-      const line=d3.line().defined(d=&gt;d[key]!==null).x(d=&gt;x(d.x)).y(d=&gt;y(d[key]));
-      sel.append(&#x27;path&#x27;).datum(data).attr(&#x27;d&#x27;,line).attr(&#x27;fill&#x27;,&#x27;none&#x27;).attr(&#x27;stroke&#x27;,color).attr(&#x27;stroke-width&#x27;,2).attr(&#x27;stroke-dasharray&#x27;,dash);
-    }
-    text(svg,(margin.left+width-margin.right)/2,height-4,isAngle?&#x27;Input angle (degrees)&#x27;:&#x27;Input radius (normalized)&#x27;,{&#x27;text-anchor&#x27;:&#x27;middle&#x27;,class:&#x27;axis-title&#x27;,&#x27;data-axis&#x27;:&#x27;x&#x27;});
-    text(svg,16,(margin.top+height-margin.bottom)/2,isAngle?&#x27;Output angle (degrees)&#x27;:&#x27;Largest |axis| (normalized)&#x27;,{transform:`rotate(-90 16 ${(margin.top+height-margin.bottom)/2})`,&#x27;text-anchor&#x27;:&#x27;middle&#x27;,class:&#x27;axis-title&#x27;,&#x27;data-axis&#x27;:&#x27;y&#x27;});
-    const guide=sel.append(&#x27;line&#x27;).attr(&#x27;data-chart-hover-guide&#x27;,&#x27;&#x27;).attr(&#x27;y1&#x27;,margin.top).attr(&#x27;y2&#x27;,height-margin.bottom).attr(&#x27;stroke&#x27;,ink).attr(&#x27;opacity&#x27;,0);
-    const keys=[&#x27;raw&#x27;,&#x27;ds4&#x27;,&#x27;rl&#x27;];
-    const markers=[ink,S1,S2].map(color=&gt;sel.append(&#x27;circle&#x27;).attr(&#x27;data-chart-hover-marker&#x27;,&#x27;&#x27;).attr(&#x27;r&#x27;,4).attr(&#x27;fill&#x27;,color).attr(&#x27;opacity&#x27;,0));
-    function hover(event) {
-      const box=svg.getBoundingClientRect(),mx=Math.max(x(0),Math.min(x(maxX),(event.clientX-box.left)*width/box.width)),val=x.invert(mx);
-      const i=d3.bisector(d=&gt;d.x).center(data,val),j=data[i].x&gt;val?Math.max(0,i-1):i,k=Math.min(data.length-1,j+1),f=k===j?0:(val-data[j].x)/(data[k].x-data[j].x);
-      const values=keys.map(key=&gt;!state.visible[key]||data[j][key]===null||data[k][key]===null?null:data[j][key]+f*(data[k][key]-data[j][key]));
-      guide.attr(&#x27;x1&#x27;,mx).attr(&#x27;x2&#x27;,mx).attr(&#x27;opacity&#x27;,.5);
-      values.forEach((v,n)=&gt;markers[n].attr(&#x27;cx&#x27;,mx).attr(&#x27;cy&#x27;,v===null?y(0):y(v)).attr(&#x27;opacity&#x27;,v===null?0:1));
-      const tip=root.querySelector(&#x27;.jc-tooltip&#x27;),rb=root.getBoundingClientRect();root.style.position=&#x27;relative&#x27;;
-      tip.textContent=(isAngle?val.toFixed(1)+&#x27;°&#x27;:val.toFixed(3))+&#x27; → &#x27;+keys.map((key,n)=&gt;state.visible[key]?[&#x27;Raw&#x27;,&#x27;DS4&#x27;,&#x27;Remapper&#x27;][n]+&#x27; &#x27;+(values[n]===null?&#x27;centered&#x27;:values[n].toFixed(isAngle?1:3)):null).filter(Boolean).join(&#x27; · &#x27;);tip.hidden=false;
-      tip.style.left=Math.max(0,Math.min(root.clientWidth-240,event.clientX-rb.left-110))+&#x27;px&#x27;;tip.style.top=(box.top-rb.top+6)+&#x27;px&#x27;;
-    }
-    const hit=sel.append(&#x27;rect&#x27;).attr(&#x27;data-chart-hit&#x27;,&#x27;&#x27;).attr(&#x27;data-chart-hover-overlay&#x27;,&#x27;cross-series&#x27;).attr(&#x27;x&#x27;,margin.left).attr(&#x27;y&#x27;,margin.top).attr(&#x27;width&#x27;,width-margin.left-margin.right).attr(&#x27;height&#x27;,height-margin.top-margin.bottom).attr(&#x27;fill&#x27;,&#x27;transparent&#x27;);
-    hit.on(&#x27;pointermove&#x27;,hover).on(&#x27;pointerdown&#x27;,hover).on(&#x27;pointerleave&#x27;,()=&gt;{guide.attr(&#x27;opacity&#x27;,0);markers.forEach(m=&gt;m.attr(&#x27;opacity&#x27;,0));root.querySelector(&#x27;.jc-tooltip&#x27;).hidden=true;});
-  }
-  function draw() {
-    frame=0;$(&#x27;radius&#x27;).value=state.radius;$(&#x27;angle&#x27;).value=state.angle;$(&#x27;radius-value&#x27;).textContent=state.radius.toFixed(3);$(&#x27;angle-value&#x27;).textContent=state.angle.toFixed(1)+&#x27;°&#x27;;
-    for(const button of $(&#x27;series-legend&#x27;).querySelectorAll(&#x27;button&#x27;)) {const on=state.visible[button.dataset.series];button.setAttribute(&#x27;aria-pressed&#x27;,String(on));button.querySelector(&#x27;.jc-swatch&#x27;).style.opacity=on?1:.25;}
-    if(!valid()) {for(const id of [&#x27;raw&#x27;,&#x27;ds4&#x27;,&#x27;rl&#x27;,&#x27;angle-chart&#x27;,&#x27;travel-chart&#x27;])$(id).replaceChildren();for(const id of [&#x27;raw-value&#x27;,&#x27;ds4-value&#x27;,&#x27;rl-value&#x27;,&#x27;selection&#x27;])$(id).textContent=&#x27;&#x27;;return;}
-    const raw=inputPoint(),a=M.ds4(...raw,state.ds4),b=M.decoupled(...raw,state.rl);
-    $(&#x27;raw-value&#x27;).innerHTML=info(raw);$(&#x27;ds4-value&#x27;).innerHTML=info(a.out);$(&#x27;rl-value&#x27;).innerHTML=info(b.out);
-    $(&#x27;selection&#x27;).textContent=&#x27;Virtual Xbox axes: DS4 (&#x27;+a.stick.join(&#x27;, &#x27;)+&#x27;) · Remapper (&#x27;+b.stick.join(&#x27;, &#x27;)+&#x27;)&#x27;;
-    $(&#x27;map-legend&#x27;).textContent=state.view===&#x27;regions&#x27;?&#x27;Gray: zero output · Color: cardinal output · Unfilled: diagonal output · Dashed boundary: remapper transition end&#x27;:&#x27;Faint ring: raw travel · Colored trace: mapped ring · Hollow point: raw input · Filled point: output&#x27;;
-    plane($(&#x27;raw&#x27;),&#x27;raw&#x27;);plane($(&#x27;ds4&#x27;),&#x27;ds4&#x27;);plane($(&#x27;rl&#x27;),&#x27;rl&#x27;);drawTransfer($(&#x27;angle-chart&#x27;),&#x27;angle&#x27;);drawTransfer($(&#x27;travel-chart&#x27;),&#x27;travel&#x27;);
-  }
-  function schedule() {if(!frame)frame=requestAnimationFrame(draw);}
-  $(&#x27;radius&#x27;).addEventListener(&#x27;input&#x27;,()=&gt;{state.radius=Number($(&#x27;radius&#x27;).value);schedule();});$(&#x27;radius&#x27;).addEventListener(&#x27;change&#x27;,persist);
-  $(&#x27;angle&#x27;).addEventListener(&#x27;input&#x27;,()=&gt;{state.angle=Number($(&#x27;angle&#x27;).value);schedule();});$(&#x27;angle&#x27;).addEventListener(&#x27;change&#x27;,persist);
-  $(&#x27;preset&#x27;).addEventListener(&#x27;change&#x27;,()=&gt;{if($(&#x27;preset&#x27;).value===&#x27;custom&#x27;)return;const old=state;state=makeState($(&#x27;preset&#x27;).value);state.view=old.view;state.visible=old.visible;settings();schedule();persist();});
-  $(&#x27;view&#x27;).addEventListener(&#x27;change&#x27;,()=&gt;{state.view=$(&#x27;view&#x27;).value;schedule();persist();});
-  $(&#x27;zoom&#x27;).addEventListener(&#x27;change&#x27;,()=&gt;{state.zoom=Number($(&#x27;zoom&#x27;).value);schedule();persist();});
-  $(&#x27;mode&#x27;).addEventListener(&#x27;change&#x27;,()=&gt;{state.ds4.mode=$(&#x27;mode&#x27;).value;changed();settings();persist();});
-  $(&#x27;square&#x27;).addEventListener(&#x27;change&#x27;,()=&gt;{state.ds4.square=$(&#x27;square&#x27;).checked;$(&#x27;roundness-field&#x27;).hidden=!state.ds4.square;changed();persist();});
-  $(&#x27;roundness&#x27;).addEventListener(&#x27;input&#x27;,()=&gt;{const v=Number($(&#x27;roundness&#x27;).value);if(Number.isFinite(v)){state.ds4.roundness=Math.max(0,Math.min(1000,v));changed();}});$(&#x27;roundness&#x27;).addEventListener(&#x27;change&#x27;,()=&gt;{$(&#x27;roundness&#x27;).value=state.ds4.roundness;persist();});
-  $(&#x27;curve&#x27;).addEventListener(&#x27;change&#x27;,()=&gt;{state.ds4.curve=Number($(&#x27;curve&#x27;).value);changed();persist();});
-  $(&#x27;rl-square&#x27;).addEventListener(&#x27;change&#x27;,()=&gt;{state.rl.squareStick=$(&#x27;rl-square&#x27;).checked;$(&#x27;rl-roundness-field&#x27;).hidden=!state.rl.squareStick;changed();persist();});
-  $(&#x27;rl-roundness&#x27;).addEventListener(&#x27;input&#x27;,()=&gt;{const v=Number($(&#x27;rl-roundness&#x27;).value);if(Number.isFinite(v)){state.rl.squareRoundness=Math.max(0,Math.min(1000,v));changed();}});$(&#x27;rl-roundness&#x27;).addEventListener(&#x27;change&#x27;,()=&gt;{$(&#x27;rl-roundness&#x27;).value=state.rl.squareRoundness;persist();});
-  for(const [key,label,color] of [[&#x27;raw&#x27;,&#x27;Raw · dotted&#x27;,ink],[&#x27;ds4&#x27;,&#x27;DS4Windows · solid&#x27;,S1],[&#x27;rl&#x27;,&#x27;Remapper · dashed&#x27;,S2]]) {
-    const button=document.createElement(&#x27;button&#x27;);button.type=&#x27;button&#x27;;button.className=&#x27;cursor-interaction&#x27;;button.dataset.series=key;button.setAttribute(&#x27;aria-pressed&#x27;,String(state.visible[key]));
-    const swatch=document.createElement(&#x27;span&#x27;);swatch.className=&#x27;jc-swatch&#x27;;swatch.style.background=color;button.append(swatch,document.createTextNode(label));
-    button.addEventListener(&#x27;click&#x27;,()=&gt;{state.visible[key]=!state.visible[key];button.setAttribute(&#x27;aria-pressed&#x27;,String(state.visible[key]));swatch.style.opacity=state.visible[key]?1:.25;schedule();persist();});$(&#x27;series-legend&#x27;).append(button);
-  }
-  function move(e) {const svg=$(&#x27;raw&#x27;),g=svg._geometry;if(!g)return;const b=svg.getBoundingClientRect();let x=(((e.clientX-b.left)*g.width/b.width-g.l)/g.size*2-1)*state.zoom,y=(1-((e.clientY-b.top)*g.height/b.height-g.t)/g.size*2)*state.zoom;const r=Math.hypot(x,y);state.radius=Math.min(1,r);state.angle=r&lt;.003?0:Math.atan2(y,x)/deg;schedule();}
-  $(&#x27;raw&#x27;).addEventListener(&#x27;pointerdown&#x27;,e=&gt;{drag=true;$(&#x27;raw&#x27;).setPointerCapture(e.pointerId);move(e);});$(&#x27;raw&#x27;).addEventListener(&#x27;pointermove&#x27;,e=&gt;{if(drag)move(e);});$(&#x27;raw&#x27;).addEventListener(&#x27;pointerup&#x27;,()=&gt;{drag=false;persist();});$(&#x27;raw&#x27;).addEventListener(&#x27;pointercancel&#x27;,()=&gt;{drag=false;});
-  window.addEventListener(&#x27;openai:set_globals&#x27;,e=&gt;{if(applySaved(e.detail?.globals?.widgetState)){settings();schedule();}});
-  new ResizeObserver(schedule).observe(root);
-  settings();draw();
+ const root=document.getElementById(&#x27;joystick-compare&#x27;),$=id=&gt;root.querySelector(&#x27;#jc-&#x27;+id),M=globalThis.JoystickCompare;
+ const names=[&#x27;Radial&#x27;,&#x27;Axial&#x27;,&#x27;Angular&#x27;],colors=[&#x27;var(--blue, #3978c6)&#x27;,&#x27;var(--orange, #c77421)&#x27;,&#x27;var(--purple, #9162c6)&#x27;];
+ const defaults=name=&gt;({mappingMode:name,innerDeadzone:.05,outerRingThreshold:0,snapAngleDeg:8,angularMaxZone:1,angularSquareOutput:true,radialAntiDeadzone:0,radialMaxZone:1,radialMaxOutput:1,xSnapWidth:.1,ySnapWidth:.1,centerBlendWidth:.05,xAntiDeadzone:0,yAntiDeadzone:0,xMaxZone:1,yMaxZone:1,xMaxOutput:1,yMaxOutput:1,squareStick:true,squareRoundness:0});
+ let state={version:4,radius:.65,angle:25,zoom:1,view:&#x27;output&#x27;,profiles:Object.fromEntries(names.map(n=&gt;[n,defaults(n)]))};
+ const saved=window.openai?.widgetState?.privateContent?.state;
+ if(saved?.version===4 &amp;&amp; names.every(n=&gt;saved.profiles?.[n]))state={...state,...saved,profiles:Object.fromEntries(names.map(n=&gt;[n,{...defaults(n),...saved.profiles[n],mappingMode:n}]))};
+ const save=()=&gt;window.openai?.setWidgetState?.({privateContent:{state},modelContent:{profiles:state.profiles,input:{radius:state.radius,angle:state.angle}}})?.catch(()=&gt;{});
+ const ns=&#x27;http://www.w3.org/2000/svg&#x27;;
+ function el(tag,attrs={},parent){const e=document.createElementNS(ns,tag);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);if(parent)parent.append(e);return e;}
+ function text(parent,x,y,t,anchor=&#x27;middle&#x27;){const e=el(&#x27;text&#x27;,{x,y,fill:&#x27;currentColor&#x27;,&#x27;font-size&#x27;:11,&#x27;text-anchor&#x27;:anchor},parent);e.textContent=t;return e;}
+ function valid(c){
+  const unit=v=&gt;Number.isFinite(v)&amp;&amp;v&gt;=0&amp;&amp;v&lt;=1;
+  if(!unit(c.innerDeadzone))return &#x27;Inner deadzone must be between 0 and 1.&#x27;;
+  if(c.mappingMode===&#x27;Angular&#x27;)return unit(c.angularMaxZone)&amp;&amp;c.angularMaxZone&gt;c.innerDeadzone&amp;&amp;unit(c.outerRingThreshold)&amp;&amp;Number.isFinite(c.snapAngleDeg)&amp;&amp;c.snapAngleDeg&gt;=0&amp;&amp;c.snapAngleDeg&lt;45?&#x27;&#x27;:&#x27;Max zone must exceed inner deadzone (up to 1); threshold must be 0–1 and snap angle below 45°.&#x27;;
+  if(!Number.isFinite(c.squareRoundness)||c.squareRoundness&lt;0||c.squareRoundness&gt;1000)return &#x27;Square roundness must be 0–1000.&#x27;;
+  if(c.mappingMode===&#x27;Radial&#x27;)return unit(c.radialMaxZone)&amp;&amp;c.innerDeadzone&lt;c.radialMaxZone&amp;&amp;unit(c.radialAntiDeadzone)&amp;&amp;unit(c.radialMaxOutput)&amp;&amp;c.radialAntiDeadzone&lt;=c.radialMaxOutput?&#x27;&#x27;:&#x27;Max zone must exceed inner deadzone; anti-deadzone must not exceed max output (0–1).&#x27;;
+  if(![&#x27;xSnapWidth&#x27;,&#x27;ySnapWidth&#x27;,&#x27;xAntiDeadzone&#x27;,&#x27;yAntiDeadzone&#x27;,&#x27;xMaxZone&#x27;,&#x27;yMaxZone&#x27;,&#x27;xMaxOutput&#x27;,&#x27;yMaxOutput&#x27;].every(k=&gt;unit(c[k])))return &#x27;Axis values must be between 0 and 1.&#x27;;
+  if(!unit(c.centerBlendWidth)||c.centerBlendWidth&lt;.000001||c.xSnapWidth+c.centerBlendWidth&gt;=c.xMaxZone||c.ySnapWidth+c.centerBlendWidth&gt;=c.yMaxZone||c.innerDeadzone+c.centerBlendWidth&gt;=Math.min(c.xMaxZone,c.yMaxZone))return &#x27;Leave room for the center blend: deadzone and snap widths plus blend must be below max zones.&#x27;;
+  return &#x27;&#x27;;
+ }
+ const cards={};
+ function field(parent,name,key,label,max=1,step=.001){const row=document.createElement(&#x27;label&#x27;);row.textContent=label;const input=document.createElement(&#x27;input&#x27;);input.type=&#x27;number&#x27;;input.min=key===&#x27;centerBlendWidth&#x27;?.000001:0;input.max=max;input.step=step;input.value=state.profiles[name][key];input.id=&#x27;jc-&#x27;+name+&#x27;-&#x27;+key;input.setAttribute(&#x27;aria-label&#x27;,name+&#x27; &#x27;+label);input.addEventListener(&#x27;input&#x27;,()=&gt;{state.profiles[name][key]=input.value===&#x27;&#x27;?NaN:Number(input.value);render();save();});row.append(input);parent.append(row);}
+ function build(){
+  $(&#x27;profiles&#x27;).replaceChildren();$(&#x27;legend&#x27;).replaceChildren();
+  names.forEach((name,i)=&gt;{
+   const card=document.createElement(&#x27;section&#x27;);card.dataset.profile=name;
+   const heading=document.createElement(&#x27;h3&#x27;);heading.textContent=name;heading.style.color=colors[i];card.append(heading);
+   const svg=el(&#x27;svg&#x27;,{viewBox:&#x27;0 0 320 320&#x27;,role:&#x27;img&#x27;,&#x27;aria-label&#x27;:name+&#x27; mapping; drag to change shared input&#x27;},card);
+   const read=document.createElement(&#x27;div&#x27;);read.className=&#x27;readout&#x27;;card.append(read);
+   const error=document.createElement(&#x27;div&#x27;);error.className=&#x27;error&#x27;;error.setAttribute(&#x27;role&#x27;,&#x27;status&#x27;);card.append(error);
+   const config=document.createElement(&#x27;div&#x27;);card.append(config);cards[name]={svg,read,error};
+   field(config,name,&#x27;innerDeadzone&#x27;,&#x27;Inner deadzone&#x27;);
+   if(name===&#x27;Angular&#x27;){field(config,name,&#x27;outerRingThreshold&#x27;,&#x27;Outer ring threshold&#x27;);field(config,name,&#x27;snapAngleDeg&#x27;,&#x27;Snap angle (degrees)&#x27;,44.9,.1);field(config,name,&#x27;angularMaxZone&#x27;,&#x27;Max zone&#x27;);const row=document.createElement(&#x27;label&#x27;);row.textContent=&#x27;Square output&#x27;;const input=document.createElement(&#x27;input&#x27;);input.type=&#x27;checkbox&#x27;;input.checked=state.profiles[name].angularSquareOutput;input.setAttribute(&#x27;aria-label&#x27;,&#x27;Angular Square output&#x27;);input.addEventListener(&#x27;change&#x27;,()=&gt;{state.profiles[name].angularSquareOutput=input.checked;render();save();});row.append(input);config.append(row);}
+   if(name===&#x27;Radial&#x27;){field(config,name,&#x27;radialAntiDeadzone&#x27;,&#x27;Anti-deadzone&#x27;);field(config,name,&#x27;radialMaxZone&#x27;,&#x27;Max zone&#x27;);field(config,name,&#x27;radialMaxOutput&#x27;,&#x27;Max output&#x27;);}
+   if(name===&#x27;Axial&#x27;){
+    field(config,name,&#x27;xSnapWidth&#x27;,&#x27;X snap width (north/south)&#x27;);field(config,name,&#x27;ySnapWidth&#x27;,&#x27;Y snap width (east/west)&#x27;);field(config,name,&#x27;centerBlendWidth&#x27;,&#x27;Center blend width&#x27;);
+    for(const axis of [&#x27;x&#x27;,&#x27;y&#x27;]){const group=document.createElement(&#x27;details&#x27;);group.open=true;const title=document.createElement(&#x27;summary&#x27;);title.textContent=axis.toUpperCase()+&#x27; output&#x27;;group.append(title);config.append(group);for(const[key,label]of [[&#x27;AntiDeadzone&#x27;,&#x27;Anti-deadzone&#x27;],[&#x27;MaxZone&#x27;,&#x27;Max zone&#x27;],[&#x27;MaxOutput&#x27;,&#x27;Max output&#x27;]])field(group,name,axis+key,label);}
+   }
+   if(name!==&#x27;Angular&#x27;){const row=document.createElement(&#x27;label&#x27;);row.textContent=&#x27;Square Stick&#x27;;const input=document.createElement(&#x27;input&#x27;);input.type=&#x27;checkbox&#x27;;input.checked=state.profiles[name].squareStick;input.setAttribute(&#x27;aria-label&#x27;,name+&#x27; Square Stick&#x27;);input.addEventListener(&#x27;change&#x27;,()=&gt;{state.profiles[name].squareStick=input.checked;render();save();});row.append(input);config.append(row);field(config,name,&#x27;squareRoundness&#x27;,&#x27;Square roundness&#x27;,1000,.1);}
+   const reset=document.createElement(&#x27;button&#x27;);reset.textContent=&#x27;Reset &#x27;+name;reset.addEventListener(&#x27;click&#x27;,()=&gt;{state.profiles[name]=defaults(name);build();render();save();});config.append(reset);
+   $(&#x27;profiles&#x27;).append(card);
+   const legend=document.createElement(&#x27;span&#x27;);legend.textContent=&#x27;● &#x27;+name;legend.style.color=colors[i];$(&#x27;legend&#x27;).append(legend);
+   let dragging=false;
+   function move(e){const r=svg.getBoundingClientRect(),x=((e.clientX-r.left)/r.width*320-160)/135*state.zoom,y=(160-(e.clientY-r.top)/r.height*320)/135*state.zoom;state.radius=Math.min(1,Math.hypot(x,y));state.angle=Math.atan2(y,x)*180/Math.PI;render();}
+   svg.addEventListener(&#x27;pointerdown&#x27;,e=&gt;{dragging=true;svg.setPointerCapture(e.pointerId);move(e);});svg.addEventListener(&#x27;pointermove&#x27;,e=&gt;{if(dragging)move(e);});svg.addEventListener(&#x27;pointerup&#x27;,()=&gt;{dragging=false;save();});svg.addEventListener(&#x27;pointercancel&#x27;,()=&gt;{dragging=false;});
+  });
+ }
+ function plane(name,i){const {svg,read,error}=cards[name],c=state.profiles[name],problem=valid(c);svg.replaceChildren();error.textContent=problem;
+  const z=state.zoom,px=x=&gt;160+x/z*135,py=y=&gt;160-y/z*135;
+  for(const t of [-z,-z/2,0,z/2,z]){el(&#x27;line&#x27;,{x1:px(t),x2:px(t),y1:25,y2:295,stroke:&#x27;var(--border)&#x27;},svg);el(&#x27;line&#x27;,{x1:25,x2:295,y1:py(t),y2:py(t),stroke:&#x27;var(--border)&#x27;},svg);text(svg,px(t),313,t.toFixed(2));text(svg,20,py(t)+4,t.toFixed(2),&#x27;end&#x27;);}
+  const clipId=&#x27;clip-&#x27;+name,defs=el(&#x27;defs&#x27;,{},svg),clip=el(&#x27;clipPath&#x27;,{id:clipId},defs);el(&#x27;rect&#x27;,{x:25,y:25,width:270,height:270},clip);const plot=el(&#x27;g&#x27;,{&#x27;clip-path&#x27;:&#x27;url(#&#x27;+clipId+&#x27;)&#x27;},svg);
+  if(problem){read.textContent=&#x27;Adjust the settings below to resume this plot.&#x27;;return;}
+  if(state.view===&#x27;regions&#x27;)for(let xi=0;xi&lt;45;xi++)for(let yi=0;yi&lt;45;yi++){const x=(-1+(xi+.5)/22.5)*z,y=(-1+(yi+.5)/22.5)*z,o=M.remapper(x,y,c).out;let fill=o[0]===0&amp;&amp;o[1]===0?&#x27;var(--muted-foreground)&#x27;:Math.abs(o[0])&lt;1e-9||Math.abs(o[1])&lt;1e-9?colors[i]:null;if(fill)el(&#x27;rect&#x27;,{x:px(x)-3,y:py(y)-3,width:6,height:6,fill,opacity:.23},plot);}
+  const points=Array.from({length:361},(_,j)=&gt;{const a=j*Math.PI/180;return M.remapper(state.radius*Math.cos(a),state.radius*Math.sin(a),c).out;});
+  el(&#x27;path&#x27;,{d:points.map((o,j)=&gt;(j?&#x27;L&#x27;:&#x27;M&#x27;)+px(o[0])+&#x27;,&#x27;+py(o[1])).join(&#x27;&#x27;),fill:&#x27;none&#x27;,stroke:colors[i],&#x27;stroke-width&#x27;:2},plot);
+  el(&#x27;circle&#x27;,{cx:160,cy:160,r:state.radius/z*135,fill:&#x27;none&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-dasharray&#x27;:&#x27;4 4&#x27;},plot);
+  const a=state.angle*Math.PI/180,x=state.radius*Math.cos(a),y=state.radius*Math.sin(a),result=M.remapper(x,y,c),o=result.out;
+  el(&#x27;line&#x27;,{x1:160,y1:160,x2:px(o[0]),y2:py(o[1]),stroke:colors[i]},plot);
+  el(&#x27;circle&#x27;,{cx:px(x),cy:py(y),r:6,fill:&#x27;var(--background)&#x27;,stroke:&#x27;var(--foreground)&#x27;,&#x27;stroke-width&#x27;:2},plot);
+  el(&#x27;circle&#x27;,{cx:px(o[0]),cy:py(o[1]),r:4,fill:colors[i]},plot);
+  read.textContent=&#x27;Output X &#x27;+o[0].toFixed(3)+&#x27; · Y &#x27;+o[1].toFixed(3)+&#x27; | Angle &#x27;+(Math.hypot(...o)&gt;1e-9?(Math.atan2(o[1],o[0])*180/Math.PI).toFixed(1)+&#x27;°&#x27;:&#x27;—&#x27;);
+ }
+ function chart(id,angle){const svg=$(id);svg.replaceChildren();svg.setAttribute(&#x27;viewBox&#x27;,&#x27;0 0 520 250&#x27;);const x=v=&gt;45+(angle?(v+180)/360:v)*455,y=v=&gt;215-(angle?(v+180)/360:v)*190;
+  const ticks=angle?[-180,-90,0,90,180]:[0,.25,.5,.75,1];for(const t of ticks){el(&#x27;line&#x27;,{x1:45,x2:500,y1:y(t),y2:y(t),stroke:&#x27;var(--border)&#x27;},svg);text(svg,40,y(t)+4,t,&#x27;end&#x27;);text(svg,x(t),235,t);}
+  names.forEach((name,i)=&gt;{const c=state.profiles[name];if(valid(c))return;let path=&#x27;&#x27;,last=null;
+   for(let j=0;j&lt;=360;j++){const v=angle?j-180:j/360,a=(angle?v:state.angle)*Math.PI/180,r=angle?state.radius:v,o=M.remapper(r*Math.cos(a),r*Math.sin(a),c).out;if(angle&amp;&amp;Math.hypot(...o)&lt;1e-9){last=null;continue;}const value=angle?Math.atan2(o[1],o[0])*180/Math.PI:Math.max(Math.abs(o[0]),Math.abs(o[1]));path+=(last===null||(angle&amp;&amp;Math.abs(last-value)&gt;180)?&#x27;M&#x27;:&#x27;L&#x27;)+x(v)+&#x27;,&#x27;+y(value);last=value;}
+   el(&#x27;path&#x27;,{d:path,fill:&#x27;none&#x27;,stroke:colors[i],&#x27;stroke-width&#x27;:2},svg);
+  });
+ }
+ function render(){state.radius=Number.isFinite(state.radius)?Math.max(0,Math.min(1,state.radius)):.65;state.angle=Number.isFinite(state.angle)?Math.max(-180,Math.min(180,state.angle)):25;state.zoom=state.zoom===.3?.3:1;
+  $(&#x27;radius&#x27;).value=state.radius;$(&#x27;angle&#x27;).value=state.angle;$(&#x27;radius-value&#x27;).textContent=state.radius.toFixed(3);$(&#x27;angle-value&#x27;).textContent=state.angle.toFixed(1)+&#x27;°&#x27;;$(&#x27;zoom&#x27;).value=state.zoom;$(&#x27;view&#x27;).value=state.view;
+  names.forEach(plane);chart(&#x27;angle-chart&#x27;,true);chart(&#x27;travel-chart&#x27;,false);
+ }
+ for(const key of [&#x27;radius&#x27;,&#x27;angle&#x27;,&#x27;zoom&#x27;,&#x27;view&#x27;])$(key).addEventListener(&#x27;input&#x27;,()=&gt;{state[key]=key===&#x27;view&#x27;?$(key).value:Number($(key).value);render();save();});
+ $(&#x27;reset&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;{state.profiles=Object.fromEntries(names.map(n=&gt;[n,defaults(n)]));build();render();save();});
+ build();render();
 })();
 &lt;/script&gt;
 &lt;!-- RLREMAPPER_VISUALIZER_END --&gt;

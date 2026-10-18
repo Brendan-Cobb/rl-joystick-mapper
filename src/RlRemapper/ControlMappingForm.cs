@@ -10,6 +10,11 @@ internal sealed class ControlMappingForm : Form
         new("l3", "Left stick click"), new("r3", "Right stick click"), new("guide", "Guide"),
         new("dpad_up", "D-pad up"), new("dpad_down", "D-pad down"),
         new("dpad_left", "D-pad left"), new("dpad_right", "D-pad right") ];
+    static readonly string[] AxisNames = ["Left stick horizontal", "Left stick vertical", "Right stick horizontal", "Right stick vertical", "Left trigger", "Right trigger"];
+    static readonly string[] AxisPrompts = ["Move the left stick left or right", "Move the left stick up or down", "Move the right stick left or right", "Move the right stick up or down", "Pull the left trigger", "Pull the right trigger"];
+    static int ButtonSteps => Outputs.Length - 1;
+    static int TotalSteps => ButtonSteps + AxisNames.Length;
+    double[] guideBaseline = [];
     readonly Settings draft;
     readonly DataGridView buttons = new() { Dock = DockStyle.Fill, AllowUserToAddRows = false,
         AllowUserToDeleteRows = false, RowHeadersVisible = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect,
@@ -17,11 +22,11 @@ internal sealed class ControlMappingForm : Form
     readonly Label hint = new() { Dock = DockStyle.Bottom, Height = 55, Padding = new Padding(8), AutoEllipsis = true };
     readonly System.Windows.Forms.Timer timer = new() { Interval = 40 };
     readonly List<(ComboBox Combo, Action<int> Assign)> axes = [];
-    readonly Label guidePrompt = new() { Dock = DockStyle.Top, Height = 85, Font = new Font("Segoe UI", 20), TextAlign = ContentAlignment.MiddleCenter, Text = "Set up your controller buttons" };
+    readonly Label guidePrompt = new() { Dock = DockStyle.Top, Height = 85, Font = new Font("Segoe UI", 20), TextAlign = ContentAlignment.MiddleCenter, Text = "Set up your controller" };
     readonly Label guideProgress = new() { Dock = DockStyle.Top, Height = 30, TextAlign = ContentAlignment.MiddleCenter };
     readonly ListBox guideSummary = new() { Dock = DockStyle.Fill, IntegralHeight = false, Font = new Font("Segoe UI", 11) };
     readonly HashSet<string> learned = [];
-    readonly Button skip = new() { Text = "Skip this button", AutoSize = true, Enabled = false };
+    readonly Button skip = new() { Text = "Skip this control", AutoSize = true, Enabled = false };
     int guideStep = -1;
     bool waitForRelease;
     byte previousHat;
@@ -38,18 +43,18 @@ internal sealed class ControlMappingForm : Form
         Text = "Remap controls"; Width = 760; Height = 600; MinimumSize = new Size(640, 450);
         StartPosition = FormStartPosition.CenterParent;
         var tabs = new TabControl { Dock = DockStyle.Fill };
-        var guideTab = new TabPage("Button setup");
-        var buttonTab = new TabPage("Advanced button mappings");
-        var axisTab = new TabPage("Sticks and triggers");
-        tabs.TabPages.AddRange([guideTab, axisTab, buttonTab]);
+        var guideTab = new TabPage("Controller setup");
+        var buttonTab = new TabPage("Advanced controller setup");
+        tabs.TabPages.AddRange([guideTab, buttonTab]);
         tabs.SelectedIndexChanged += (_, _) => {
+            learning = null;
             if (tabs.SelectedIndex != 0 && guideStep >= 0) {
-                guideStep = -1; skip.Enabled = false; guidePrompt.Text = "Set up your controller buttons";
-                guideProgress.Text = "Your identified buttons are kept. Start guided setup to repeat.";
+                guideStep = -1; skip.Enabled = false; guidePrompt.Text = "Set up your controller";
+                guideProgress.Text = "Your identified controls are kept. Start guided setup to repeat.";
             }
         };
         var guideInstructions = new Label { Dock = DockStyle.Top, Height = 62, Padding = new Padding(10),
-            Text = "Start guided setup, then press the button shown below. Release it before the next prompt.\nSkip buttons your controller doesn't have. Changes are kept only when you Save mappings." };
+            Text = "Start guided setup for buttons, sticks, and triggers. Keep controls released when starting.\nFollow each prompt; skip unavailable controls. Save mappings to keep your changes." };
         var guideActions = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 45, Padding = new Padding(10, 4, 10, 4) };
         var begin = new Button { Text = "Start guided setup", AutoSize = true };
         begin.Click += (_, _) => {
@@ -66,14 +71,16 @@ internal sealed class ControlMappingForm : Form
         buttons.Columns.Add(new DataGridViewComboBoxColumn { Name = "Output", HeaderText = "Send as", DataSource = Outputs,
             DisplayMember = "Label", ValueMember = "Value", DisplayStyle = DataGridViewComboBoxDisplayStyle.ComboBox });
         buttons.EditMode = DataGridViewEditMode.EditOnEnter;
-        buttonTab.Controls.Add(buttons); buttonTab.Controls.Add(instructions);
+        var advanced = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal,
+            Size = new Size(700, 450), SplitterDistance = 260, Panel1MinSize = 100, Panel2MinSize = 100 };
+        advanced.Panel1.AutoScroll = true;
+        advanced.Panel2.Controls.Add(buttons); advanced.Panel2.Controls.Add(instructions);
+        buttonTab.Controls.Add(advanced);
         var axisPanel = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 3, Padding = new Padding(12) };
         axisPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45));
         axisPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
         axisPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-        axisTab.Controls.Add(axisPanel);
-        axisTab.Controls.Add(new Label { Dock = DockStyle.Bottom, Height = 65, Padding = new Padding(12),
-            Text = "Click Learn, then move only that stick direction or pull that trigger.\nD-pad hats are forwarded automatically. Button-based D-pads can be assigned on the Buttons tab." });
+        advanced.Panel1.Controls.Add(axisPanel);
         var actions = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(8) };
         var save = new Button { Text = "Save mappings", AutoSize = true };
         save.Click += (_, _) => {
@@ -91,7 +98,7 @@ internal sealed class ControlMappingForm : Form
             FillButtons(original);
             int[] indices = [original.StickXAxis, original.StickYAxis, original.RightStickXAxis, original.RightStickYAxis, original.LeftTriggerAxis, original.RightTriggerAxis];
             for (int i = 0; i < axes.Count; i++) axes[i].Combo.SelectedIndex = indices[i];
-            guideStep = -1; skip.Enabled = false; learned.Clear(); guidePrompt.Text = "Set up your controller buttons"; guideProgress.Text = ""; RefreshGuideSummary();
+            guideStep = -1; skip.Enabled = false; learned.Clear(); guidePrompt.Text = "Set up your controller"; guideProgress.Text = ""; RefreshGuideSummary();
             learning = null; hint.Text = "Default mappings restored in this editor. Save to keep them, or Cancel to discard.";
         };
         actions.Controls.AddRange([save, cancel, defaults]);
@@ -114,7 +121,7 @@ internal sealed class ControlMappingForm : Form
                 if (joystick != IntPtr.Zero) {
                     previous = new bool[Sdl.SDL_JoystickNumButtons(joystick)];
                     timer.Tick += (_, _) => ReadInput(); timer.Start();
-                    hint.Text = "Controller connected. Press a button to identify it, or open Sticks and triggers to learn an axis.";
+                    hint.Text = "Controller connected. Start guided setup to identify buttons, sticks, and triggers.";
                 } else hint.Text = "No physical controller connected. You can edit and save mappings; reconnect and reopen to identify controls live.";
             } catch (Exception error) {
                 FillButtons(draft); save.Enabled = axes.Count == 6;
@@ -142,36 +149,58 @@ internal sealed class ControlMappingForm : Form
             bool assigned = buttons.Rows.Cast<DataGridViewRow>().Any(row => (string?)row.Cells[1].Value == output.Value);
             guideSummary.Items.Add($"{output.Label} — {(learned.Contains(output.Value) ? "Identified" : assigned ? "Existing mapping" : output.Value.StartsWith("dpad_") ? "Automatic for D-pad hats" : "Not assigned")}");
         }
+        foreach (var name in AxisNames)
+            guideSummary.Items.Add($"{name} — {(learned.Contains(name) ? "Identified" : "Existing mapping")}");
     }
     void BeginGuidedSetup()
     {
         guideStep = 0; learned.Clear(); learning = null; waitForRelease = true;
+        if (joystick != IntPtr.Zero) {
+            Sdl.SDL_JoystickUpdate();
+            guideBaseline = Enumerable.Range(0, Sdl.SDL_JoystickNumAxes(joystick)).Select(i => Sdl.Axis(joystick, i)).ToArray();
+        }
+        RefreshGuideSummary();
         skip.Enabled = true; ShowGuidedStep();
     }
     void ShowGuidedStep()
     {
-        guidePrompt.Text = $"Press {Outputs[guideStep + 1].Label}";
-        guideProgress.Text = $"Button {guideStep + 1} of {Outputs.Length - 1}";
+        guidePrompt.Text = guideStep < ButtonSteps ? $"Press {Outputs[guideStep + 1].Label}" : AxisPrompts[guideStep - ButtonSteps];
+        guideProgress.Text = $"Control {guideStep + 1} of {TotalSteps}";
         guideSummary.SelectedIndex = guideStep;
-        hint.Text = "Release all buttons, then press the requested button. You can skip it if unavailable.";
+        hint.Text = guideStep < ButtonSteps ? "Release all buttons, then press the requested button. Skip it if unavailable." : "Return sticks to center and release triggers, then move only the requested control.";
     }
     void NextGuidedStep()
     {
         guideStep++; waitForRelease = true;
-        if (guideStep >= Outputs.Length - 1) {
-            guideStep = -1; skip.Enabled = false; guidePrompt.Text = "Button setup complete";
+        if (guideStep >= TotalSteps) {
+            guideStep = -1; skip.Enabled = false; guidePrompt.Text = "Controller setup complete";
             guideProgress.Text = "Save mappings to keep your changes"; hint.Text = "Review your mappings, then Save. You can repeat setup or adjust advanced mappings.";
         } else ShowGuidedStep();
     }
     void ApplyGuidedButton(int index)
     {
-        if (guideStep < 0 || waitForRelease) return;
+        if (guideStep < 0 || guideStep >= ButtonSteps || waitForRelease) return;
         var output = Outputs[guideStep + 1];
         // A named output has one identified physical source; remove its old binding.
         foreach (DataGridViewRow row in buttons.Rows)
             if ((string?)row.Cells[1].Value == output.Value) row.Cells[1].Value = "none";
         buttons.Rows[index].Cells[1].Value = output.Value;
         learned.Add(output.Value); RefreshGuideSummary(); NextGuidedStep();
+    }
+    void ReadGuidedAxes(double[] values)
+    {
+        if (guideStep < ButtonSteps || guideStep >= TotalSteps || values.Length == 0 || values.Length != guideBaseline.Length) return;
+        var moved = values.Select((value, index) => (Index: index, Delta: Math.Abs(value - guideBaseline[index])))
+            .OrderByDescending(axis => axis.Delta).ToArray();
+        if (waitForRelease) {
+            if (moved[0].Delta < 0.15) waitForRelease = false;
+            return;
+        }
+        // Ignore small drift and ambiguous movements of two controls at once.
+        if (moved[0].Delta <= 0.35 || (moved.Length > 1 && moved[1].Delta > 0.25)) return;
+        int step = guideStep - ButtonSteps;
+        axes[step].Combo.SelectedIndex = moved[0].Index;
+        learned.Add(AxisNames[step]); RefreshGuideSummary(); NextGuidedStep();
     }
     void AddAxis(string name, int selected, Action<int> assign, int count, TableLayoutPanel panel)
     {
@@ -196,11 +225,11 @@ internal sealed class ControlMappingForm : Form
         Sdl.SDL_JoystickUpdate();
         bool[] pressedButtons = Enumerable.Range(0, previous.Length).Select(i => Sdl.SDL_JoystickGetButton(joystick, i) != 0).ToArray();
         byte hat = Sdl.SDL_JoystickNumHats(joystick) > 0 ? Sdl.SDL_JoystickGetHat(joystick, 0) : (byte)0;
-        if (guideStep >= 0 && !pressedButtons.Any(value => value) && hat == 0) waitForRelease = false;
+        if (guideStep >= 0 && guideStep < ButtonSteps && !pressedButtons.Any(value => value) && hat == 0) waitForRelease = false;
         bool accepted = false;
         for (int i = 0; i < previous.Length; i++) {
             bool pressed = pressedButtons[i];
-            if (guideStep >= 0 && pressed && !previous[i] && !waitForRelease && !accepted) {
+            if (guideStep >= 0 && guideStep < ButtonSteps && pressed && !previous[i] && !waitForRelease && !accepted) {
                 ApplyGuidedButton(i); accepted = true;
             } else if (guideStep < 0 && pressed && !previous[i] && !buttons.IsCurrentCellInEditMode) {
                 buttons.CurrentCell = buttons.Rows[i].Cells[0];
@@ -208,12 +237,14 @@ internal sealed class ControlMappingForm : Form
             }
             previous[i] = pressed;
         }
-        if (guideStep >= 0 && !waitForRelease && hat != previousHat && hat != 0) {
+        if (!accepted && guideStep >= 0 && guideStep < ButtonSteps && !waitForRelease && hat != previousHat && hat != 0) {
             string value = Outputs[guideStep + 1].Value;
             byte expected = value switch { "dpad_up" => 1, "dpad_right" => 2, "dpad_down" => 4, "dpad_left" => 8, _ => 0 };
             if (expected != 0 && hat == expected) { learned.Add(value); RefreshGuideSummary(); NextGuidedStep(); }
         }
         previousHat = hat;
+        if (guideStep >= ButtonSteps)
+            ReadGuidedAxes(Enumerable.Range(0, Sdl.SDL_JoystickNumAxes(joystick)).Select(i => Sdl.Axis(joystick, i)).ToArray());
         if (learning != null && baseline.Length > 0) {
             var moved = Enumerable.Range(0, baseline.Length).Select(i => (Index: i, Delta: Math.Abs(Sdl.Axis(joystick, i) - baseline[i]))).OrderByDescending(axis => axis.Delta).First();
             if (moved.Delta > 0.35) { learning.SelectedIndex = moved.Index; learning = null; hint.Text = $"Detected Axis {moved.Index + 1}. Save mappings when finished."; }

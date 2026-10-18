@@ -6,6 +6,7 @@ namespace RlRemapper;
 // Uses HidHide's supported CLI, never writes driver registry keys directly.
 internal static class HidHide
 {
+    static readonly HashSet<string> sessionPaths = new(StringComparer.OrdinalIgnoreCase);
     public sealed record Device(string Name, string Path)
     {
         public override string ToString() => $"{Name}  [{Path}]";
@@ -41,9 +42,11 @@ internal static class HidHide
         foreach (var arg in args) process.StartInfo.ArgumentList.Add(arg);
         process.Start();
         // CLI responses are small; timeout prevents an unresponsive driver from hanging the UI forever.
-        string output = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
         if (!process.WaitForExit(10000)) { process.Kill(); throw new TimeoutException("HidHide CLI timed out."); }
+        string output = outputTask.GetAwaiter().GetResult();
+        string error = errorTask.GetAwaiter().GetResult();
         if (process.ExitCode != 0) throw new InvalidOperationException($"HidHide {args[0]} failed: {error}");
         return output;
     }
@@ -77,6 +80,7 @@ internal static class HidHide
             throw new InvalidOperationException("Remapper is not whitelisted in HidHide. Rerun setup before hiding any device.");
         foreach (string hidePath in ControllerDeviceTree.HidePaths(path))
         {
+            sessionPaths.Add(hidePath); // Remember partial setup too, even after disconnect.
             if (!Run("--dev-list").Split('\n').Any(line => line.Trim().Equals($"--dev-hide \"{hidePath}\"", StringComparison.OrdinalIgnoreCase)))
                 Run("--dev-hide", hidePath);
             if (!Run("--dev-list").Split('\n').Any(line => line.Trim().Equals($"--dev-hide \"{hidePath}\"", StringComparison.OrdinalIgnoreCase)))
@@ -91,11 +95,14 @@ internal static class HidHide
         string exe = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "RlRemapper.exe"));
         if (!Run("--app-list").Split('\n').Any(line => line.Trim().Equals($"--app-reg \"{exe}\"", StringComparison.OrdinalIgnoreCase)))
             throw new InvalidOperationException("Remapper is not allowlisted. Rerun setup.");
-        if (string.IsNullOrWhiteSpace(path) || !Run("--dev-list").Split('\n').Any(line => line.Trim().Equals($"--dev-hide \"{path}\"", StringComparison.OrdinalIgnoreCase)))
-            throw new InvalidOperationException("First connect the controller and use Start once to configure hiding. Then Stop, unplug it and use Prepare Player 1.");
+        if (string.IsNullOrWhiteSpace(path))
+            throw new InvalidOperationException("Connect and choose your controller first, then unplug it and retry Player 1 setup.");
         foreach (string hidePath in ControllerDeviceTree.HidePaths(path))
+        {
+            sessionPaths.Add(hidePath);
             if (!Run("--dev-list").Split('\n').Any(line => line.Trim().Equals($"--dev-hide \"{hidePath}\"", StringComparison.OrdinalIgnoreCase)))
-                throw new InvalidOperationException("Controller hiding is incomplete. Connect it and use Start first.");
+                Run("--dev-hide", hidePath);
+        }
         Run("--cloak-on");
     }
     public static void ConfigureReconnected(string savedPath)
@@ -108,15 +115,31 @@ internal static class HidHide
     }
     public static void Unhide(string path)
     {
+        if (string.IsNullOrWhiteSpace(path)) return;
         // Never disable the global cloak: other applications may use HidHide too.
-        var paths = ControllerDeviceTree.HidePaths(path).ToList();
-        foreach (var device in GamingDevices())
+        var paths = new HashSet<string>(sessionPaths, StringComparer.OrdinalIgnoreCase) { path };
+        var errors = new List<Exception>();
+        try { paths.UnionWith(ControllerDeviceTree.HidePaths(path)); }
+        catch (Exception e) { errors.Add(e); }
+        try
         {
-            var currentPaths = ControllerDeviceTree.HidePaths(device.Path);
-            if (currentPaths.Intersect(paths, StringComparer.OrdinalIgnoreCase).Any()) paths.AddRange(currentPaths);
+            foreach (var device in GamingDevices())
+            {
+                var currentPaths = ControllerDeviceTree.HidePaths(device.Path);
+                if (currentPaths.Intersect(paths, StringComparer.OrdinalIgnoreCase).Any()) paths.UnionWith(currentPaths);
+            }
         }
-        foreach (string hidePath in paths.Distinct(StringComparer.OrdinalIgnoreCase))
-            if (Run("--dev-list").Split('\n').Any(line => line.Trim().Equals($"--dev-hide \"{hidePath}\"", StringComparison.OrdinalIgnoreCase)))
-                Run("--dev-unhide", hidePath);
+        catch (Exception e) { errors.Add(e); }
+        // Attempt every known interface even when enumeration or one restoration fails.
+        foreach (string hidePath in paths)
+        {
+            try {
+                if (Run("--dev-list").Split('\n').Any(line => line.Trim().Equals($"--dev-hide \"{hidePath}\"", StringComparison.OrdinalIgnoreCase)))
+                    Run("--dev-unhide", hidePath);
+                sessionPaths.Remove(hidePath);
+            }
+            catch (Exception e) { errors.Add(e); }
+        }
+        if (errors.Count != 0) throw new AggregateException("Some controller visibility checks or restoration steps failed.", errors);
     }
 }

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using RlRemapper;
 
-internal static class DecoupledAxialChecks
+internal static class AxialChecks
 {
     static int checks;
     static void Check(bool condition, string message)
@@ -12,7 +12,7 @@ internal static class DecoupledAxialChecks
     static void Near(double actual, double expected, string message, double tolerance = 1e-10) =>
         Check(double.IsFinite(actual) && Math.Abs(actual - expected) <= tolerance, $"{message}: expected {expected}, got {actual}");
     static double Length((double X, double Y) p) => Math.Sqrt(p.X * p.X + p.Y * p.Y);
-    static Settings Basic() => new() { MappingMode = StickMappingMode.DecoupledAxial, SquareStick = false };
+    static Settings Basic() => new() { MappingMode = StickMappingMode.Axial, SquareStick = false };
     static void Invalid(Action<Settings> change)
     {
         var settings = Basic(); change(settings);
@@ -128,7 +128,7 @@ internal static class DecoupledAxialChecks
         Near(a.Y, p.Y, "Independent inner cutoff leaves exterior Y unchanged");
 
         var old = JsonSerializer.Deserialize<Settings>("{\"InnerDeadzone\":0.12,\"OuterRingThreshold\":0.6,\"SnapAngleDeg\":13,\"StickXAxis\":5,\"ButtonMappings\":\"0=b\"}")!;
-        old.Validate(); Check(old.MappingMode == StickMappingMode.LegacyAngular, "Old JSON must retain legacy mode");
+        old.Validate(); Check(old.MappingMode == StickMappingMode.Angular, "Old JSON must retain legacy mode");
         var random = new Random(7349);
         for (int i = 0; i < 1000; i++)
         {

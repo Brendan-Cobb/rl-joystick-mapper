@@ -1,4 +1,9 @@
 using RlRemapper;
+if (args.Length == 2 && args[0] == "--export-visualizer-cases")
+{
+    RadialChecks.ExportVisualizerCases(args[1]);
+    return;
+}
 if (args.Length == 2 && args[0] == "--inspect-hide-paths")
 {
     foreach (var path in ControllerDeviceTree.HidePaths(args[1])) Console.WriteLine(path);
@@ -22,4 +27,7 @@ if (!hidePaths.SequenceEqual(new[] { "HID\\Gamepad", "USB\\GamepadMI00" }))
 hidePaths = ControllerDeviceTree.HidePaths("HID\\DirectInput", new[] { new ControllerDeviceTree.Node("USB\\CompositeWithKeyboard", "USB") });
 if (!hidePaths.SequenceEqual(new[] { "HID\\DirectInput" })) throw new Exception("Non-XInput hiding must remain limited to the selected interface.");
 Console.WriteLine("Transform and HidHide device selection checks passed");
-DecoupledAxialChecks.Run();
+AxialChecks.Run();
+RadialChecks.Run();
+
+AngularChecks.Run();
