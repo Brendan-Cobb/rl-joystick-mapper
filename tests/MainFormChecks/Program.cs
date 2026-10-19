@@ -44,7 +44,7 @@ internal static class Checks
         Call("SetBusy", false);
         Field<Label>("state").Text = "Remapping off";
         Field<Label>("controller").Text = "Controller: Xbox Controller - Connected";
-        Field<Label>("notice").Text = "Visibility unchanged. Use More > Troubleshooting to restore it.";
+        Field<Label>("notice").Text = "Visibility unchanged. Use Troubleshooting to restore it.";
         grid.Enabled = true;
         var rootItem = grid.SelectedGridItem;
         while (rootItem?.Parent != null) rootItem = rootItem.Parent;

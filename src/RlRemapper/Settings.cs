@@ -79,7 +79,7 @@ public sealed class Settings
     [Category("Controller")] public int RightStickYAxis { get; set; } = 4;
     [Category("Controller")] public int LeftTriggerAxis { get; set; } = 2;
     [Category("Controller")] public int RightTriggerAxis { get; set; } = 5;
-    [Category("Controller")][ReadOnly(true)][Description("Set with Change next to the controller name. This controller stays hidden until you explicitly choose Restore controller visibility under More > Troubleshooting.")] public string DevicePath { get; set; } = "";
+    [Category("Controller")][ReadOnly(true)][Description("Set with Change next to the controller name. This controller stays hidden until you explicitly choose Restore controller visibility under Troubleshooting.")] public string DevicePath { get; set; } = "";
     [Category("Performance")] public int PollRateHz { get; set; } = 1000;
     [Browsable(false)]
     public string ButtonMappings { get; set; } = "0=a\n1=b\n2=x\n3=y\n4=lb\n5=rb\n6=back\n7=start\n8=l3\n9=r3";

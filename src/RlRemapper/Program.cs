@@ -18,7 +18,7 @@ internal sealed class MainForm : Form
     readonly Button save = new() { Text = "Apply changes", AutoSize = true, Enabled = false };
     readonly Button remap = new() { Text = "Remap controls", AutoSize = true };
     readonly Button select = new() { Text = "Change…", AutoSize = true };
-    readonly Button more = new() { Text = "More ▾", AutoSize = true };
+    readonly Button troubleshooting = new() { Text = "Troubleshooting ▾", AutoSize = true };
     bool busy, closeRequested, allowClose;
     CancellationTokenSource? cancellation;
     Task? task;
@@ -54,15 +54,13 @@ internal sealed class MainForm : Form
             if (string.IsNullOrWhiteSpace(current.DevicePath) && !SelectDevice()) return;
             if (MessageBox.Show(this, "1. Close Rocket League.\n2. Unplug your controller.\n3. Click OK and wait for the reconnect prompt.\n4. Reconnect your controller, then launch Rocket League once remapping is active.", "Fix Player 2 assignment", MessageBoxButtons.OKCancel) == DialogResult.OK) Start(true);
         });
-        var troubleshooting = new ToolStripMenuItem("Troubleshooting");
-        troubleshooting.DropDownItems.Add("View controller inputs…", null, (_, _) => Inspect());
-        troubleshooting.DropDownItems.Add("Restore controller visibility…", null, async (_, _) => await RestoreControllerVisibility());
-        menu.Items.Add(troubleshooting);
-        more.Click += (_, _) => menu.Show(more, new Point(0, more.Height));
+        menu.Items.Add("View controller inputs…", null, (_, _) => Inspect());
+        menu.Items.Add("Restore controller visibility…", null, async (_, _) => await RestoreControllerVisibility());
+        troubleshooting.Click += (_, _) => menu.Show(troubleshooting, new Point(0, troubleshooting.Height));
         var deviceRow = new FlowLayoutPanel { AutoSize = true };
         deviceRow.Controls.AddRange([controller, select]);
         var actions = new FlowLayoutPanel { AutoSize = true };
-        actions.Controls.AddRange([start, remap, more]);
+        actions.Controls.AddRange([start, remap, troubleshooting]);
         bar.Controls.AddRange([deviceRow, actions, state]);
         var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, Padding = new Padding(8) };
         footer.Controls.AddRange([save, notice]);
@@ -109,7 +107,7 @@ internal sealed class MainForm : Form
     }
     void SetBusy(bool value)
     {
-        busy = value; remap.Enabled = select.Enabled = more.Enabled = !value;
+        busy = value; remap.Enabled = select.Enabled = troubleshooting.Enabled = !value;
         start.Enabled = true; start.Text = value ? "Stop remapping" : "Start remapping";
     }
     void Stop()
@@ -170,7 +168,7 @@ internal sealed class MainForm : Form
         catch (OperationCanceledException) { state.Text = "Remapping off"; }
         catch (Exception e) { output.Dispose(); state.Text = "Remapping stopped: " + e.Message; }
         finally {
-            notice.Text = "Visibility unchanged. Use More > Troubleshooting to restore it.";
+            notice.Text = "Visibility unchanged. Use Troubleshooting to restore it.";
             SetBusy(false); RefreshController();
             if (closeRequested) {
                 allowClose = true; Close();
