@@ -10,6 +10,27 @@ if (args.Length == 2 && args[0] == "--inspect-hide-paths")
     return;
 }
 static void Equal(double actual, double expected) { if (Math.Abs(actual - expected) > 0.000001) throw new Exception($"Expected {expected}, got {actual}"); }
+var fresh = Settings.CreateDefault();
+fresh.Validate();
+if (fresh.MappingMode != StickMappingMode.Axial || fresh.SquareStick) throw new Exception("Fresh installs must use Axial without Square Stick.");
+Equal(fresh.InnerDeadzone, .02);
+Equal(fresh.XSnapWidth, .2); Equal(fresh.YSnapWidth, .2);
+Equal(fresh.CenterBlendWidth, .5);
+Equal(fresh.XMaxZone, .707); Equal(fresh.YMaxZone, .707);
+Equal(fresh.XAntiDeadzone, 0); Equal(fresh.YAntiDeadzone, 0);
+Equal(fresh.XMaxOutput, 1); Equal(fresh.YMaxOutput, 1);
+Equal(fresh.SquareRoundness, 0);
+var corner = Transform.ApplyStick(Math.Sqrt(.5), Math.Sqrt(.5), fresh);
+Equal(corner.X, 1); Equal(corner.Y, 1);
+var legacy = System.Text.Json.JsonSerializer.Deserialize<Settings>("{}")!;
+if (legacy.MappingMode != StickMappingMode.Angular || !legacy.SquareStick) throw new Exception("Older saved profiles must retain legacy defaults.");
+Equal(legacy.InnerDeadzone, .05); Equal(legacy.XMaxZone, 1);
+var saved = fresh.Snapshot();
+saved.XSnapWidth = .15;
+var restored = saved.Snapshot();
+Equal(restored.XSnapWidth, .15);
+Equal(restored.CenterBlendWidth, .5);
+Console.WriteLine("Fresh-install preset and saved-profile compatibility checks passed.");
 var (x,y) = Transform.Apply(.02,.01,.05,0,8); Equal(x,0); Equal(y,0);
 (x,y) = Transform.Apply(.99,.05,0,0,8); Equal(y,0); Equal(x,Math.Sqrt(.99*.99+.05*.05));
 (x,y) = Transform.Apply(.3,.3,0,.75,8); Equal(x,.3); Equal(y,.3);

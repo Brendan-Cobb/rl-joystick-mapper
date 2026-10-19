@@ -31,7 +31,7 @@ internal sealed class MainForm : Form
         this.restoreVisibility = restoreVisibility;
         Text = "RL Remapper"; Width = 650; Height = 680;
         try { current = Settings.Load(); current.Validate(); }
-        catch (Exception e) { current = new Settings(); MessageBox.Show("Invalid saved settings; using defaults: " + e.Message); }
+        catch (Exception e) { current = Settings.CreateDefault(); MessageBox.Show("Invalid saved settings; using defaults: " + e.Message); }
         grid.SelectedObject = new SettingsView(current);
         MinimumSize = new Size(540, 480);
         var bar = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(8) };

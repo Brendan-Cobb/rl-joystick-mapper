@@ -28,7 +28,7 @@ Snap/deadzone and polling settings remain in the settings grid; **Apply changes*
 
 ## Stick mapping
 
-Choose **Profile → Profile**, select a mode, then **Apply changes**. The default remains **Angular**, including for existing settings files without a mode. Mode-specific settings stay saved when switching modes.
+Choose **Profile → Profile**, select a mode, then **Apply changes**. Fresh installations without saved settings start in **Axial** with the preset below. Existing saved profiles are preserved, including **Angular** for older settings files without a mode. Mode-specific settings stay saved when switching modes.
 
 | Mode | Mapping behavior | Controls |
 | --- | --- | --- |
@@ -52,16 +52,16 @@ The original mode keeps its existing behavior. **Inner deadzone** is a hard circ
 
 ### Axial
 
-| Control | Default | Effect in Axial |
+| Control | Fresh-install default | Effect in Axial |
 | --- | --- | --- |
-| Inner deadzone | `0.05` | Circular region with zero output, independent of the two axial strip widths. |
-| X snap width (north/south) | `0.10` | Suppresses X in a vertical strip near north/south outside the center transition. |
-| Y snap width (east/west) | `0.10` | Suppresses Y in a horizontal strip near east/west outside the center transition. |
-| Center blend width | `0.05` | Size of the small transition around the overlapping strips and inner circle. Larger values restore center response over a larger area. |
+| Inner deadzone | `0.02` | Circular region with zero output, independent of the two axial strip widths. |
+| X snap width (north/south) | `0.20` | Suppresses X in a vertical strip near north/south outside the center transition. |
+| Y snap width (east/west) | `0.20` | Suppresses Y in a horizontal strip near east/west outside the center transition. |
+| Center blend width | `0.50` | Size of the small transition around the overlapping strips and inner circle. Larger values restore center response over a larger area. |
 | X / Y anti-deadzone | `0` | Separate minimum active output on each axis, useful when the receiving game has a deadzone. |
-| X / Y max zone | `1` | Input travel where that axis reaches full scaled output. Lower values reach it sooner. |
+| X / Y max zone | `0.707` | Input travel where that axis reaches full scaled output. Lower values reach it sooner. |
 | X / Y max output | `1` | Caps each scaled axis before anti-deadzone and squaring; it is not a final output ceiling. |
-| Square Stick | `True` | Enables DS4-style circle-to-square expansion after the axis response. |
+| Square Stick | `False` | Enables DS4-style circle-to-square expansion after the axis response. |
 | Square roundness | `0` | `0` applies full squaring throughout travel; higher values retain a rounder center. Range: `0–1000`. |
 
 The center transition recovers diagonal output that ordinary axial deadzones would suppress. Its outer boundary is the union of a rectangle with half-widths **X snap width + Center blend width** and **Y snap width + Center blend width**, and a circle with radius **Inner deadzone + Center blend width**. Within that boundary, a smooth direction blend connects the input direction near the inner circle to the ordinary axial direction at the boundary, while the pre-response magnitude rises linearly along each input ray. This changes a small surrounding region as well as the exact strip overlap so the recovered output can join the exterior mapping continuously.

@@ -85,7 +85,25 @@ public sealed class Settings
     public string ButtonMappings { get; set; } = "0=a\n1=b\n2=x\n3=y\n4=lb\n5=rb\n6=back\n7=start\n8=l3\n9=r3";
 
     public static string PathOnDisk => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RlRemapper", "settings.json");
-    public static Settings Load() => File.Exists(PathOnDisk) ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(PathOnDisk)) ?? new() : new();
+    // Keep property initializers compatible with older saved profiles that omit fields.
+    // Apply the new preset only when starting without a saved profile.
+    public static Settings CreateDefault() => new()
+    {
+        MappingMode = StickMappingMode.Axial,
+        InnerDeadzone = 0.02,
+        XSnapWidth = 0.2,
+        YSnapWidth = 0.2,
+        CenterBlendWidth = 0.5,
+        XAntiDeadzone = 0,
+        YAntiDeadzone = 0,
+        XMaxZone = 0.707,
+        YMaxZone = 0.707,
+        XMaxOutput = 1,
+        YMaxOutput = 1,
+        SquareStick = false,
+        SquareRoundness = 0
+    };
+    public static Settings Load() => File.Exists(PathOnDisk) ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(PathOnDisk)) ?? CreateDefault() : CreateDefault();
     public void Save()
     {
         Validate();
