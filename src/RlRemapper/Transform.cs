@@ -15,7 +15,9 @@ public static class Transform
             if (magnitude == 0) return (0, 0);
             double scale = Math.Min(magnitude / settings.AngularMaxZone, 1) / magnitude;
             var output = (X: legacy.X * scale, Y: legacy.Y * scale);
-            return settings.AngularSquareOutput ? Square(output.X, output.Y) : output;
+            return settings.AngularSquareOutput
+                ? Square(output.X, output.Y)
+                : ScaleCircularOutput(output.X, output.Y, settings.AngularCircleScale);
         }
 
         // Settings are validated when published, not on every controller poll.
@@ -34,7 +36,9 @@ public static class Transform
             double magnitude = settings.RadialAntiDeadzone +
                 (settings.RadialMaxOutput - settings.RadialAntiDeadzone) * travel;
             double rx = x / radius * magnitude, ry = y / radius * magnitude;
-            return settings.SquareStick ? Square(rx, ry, settings.SquareRoundness) : (rx, ry);
+            return settings.SquareStick
+                ? Square(rx, ry, settings.SquareRoundness)
+                : ScaleCircularOutput(rx, ry, settings.RadialCircleScale);
         }
 
         double ux = Math.Abs(x) / radius, uy = Math.Abs(y) / radius;
@@ -97,6 +101,17 @@ public static class Transform
         // precedes anti-deadzone and Square Stick, so it is not a final ceiling.
         if (maxOutput != 1) travel = Math.Min(travel, Math.Min(maxOutput / 0.99, 1));
         return travel > 0 ? antiDeadzone + (1 - antiDeadzone) * travel : 0;
+    }
+
+    // Expand/contract the circular output; stop on the square boundary along
+    // the original ray instead of clipping X and Y separately (which would
+    // change the direction of radial and angular outputs).
+    static (double X, double Y) ScaleCircularOutput(double x, double y, double circleScale)
+    {
+        double maxAxis = Math.Max(Math.Abs(x), Math.Abs(y));
+        if (maxAxis == 0) return (0, 0);
+        double factor = Math.Min(circleScale, 1.0 / maxAxis);
+        return (x * factor, y * factor);
     }
 
     public static (double X, double Y) Square(double x, double y, double roundness)

@@ -27,7 +27,24 @@ internal static class AngularChecks
         output = Transform.ApplyStick(.2, .01, cfg); Near(output.Y, 0);
         cfg.AngularSquareOutput = true;
         output = Transform.ApplyStick(.5, .5, cfg); Near(output.X, 1); Near(output.Y, 1);
-        var copy = cfg.Snapshot(); Check(copy.AngularSquareOutput && copy.AngularMaxZone == .5, "Angular settings did not round-trip");
+        // Circle scaling applies only with Square output disabled. It preserves
+        // the snapped angle even when the output reaches the square boundary.
+        cfg.AngularSquareOutput = false;
+        cfg.AngularCircleScale = 1.2;
+        output = Transform.ApplyStick(.5, .5, cfg);
+        Near(output.X, 1.2 / Math.Sqrt(2)); Near(output.Y, output.X);
+        output = Transform.ApplyStick(1, 0, cfg); Near(output.X, 1); Near(output.Y, 0);
+        cfg.AngularCircleScale = .7;
+        output = Transform.ApplyStick(1, 0, cfg); Near(output.X, .7);
+        cfg.AngularSquareOutput = true;
+        output = Transform.ApplyStick(.5, .5, cfg); Near(output.X, 1); Near(output.Y, 1);
+        var copy = cfg.Snapshot(); Check(copy.AngularSquareOutput && copy.AngularMaxZone == .5 && copy.AngularCircleScale == .7, "Angular settings did not round-trip");
+        foreach (double bad in new[] { 0, .099, 1.415, double.NaN, double.PositiveInfinity }) {
+            cfg.AngularCircleScale = bad;
+            bool rejected = false; try { cfg.Validate(); } catch (ArgumentException) { rejected = true; }
+            Check(rejected, "Invalid angular circle size accepted");
+        }
+        cfg.AngularCircleScale = 1;
         foreach (double zone in new[] { 0, -.1, .05, 1.1, double.NaN, double.PositiveInfinity }) {
             cfg.AngularMaxZone = zone;
             bool rejected = false; try { cfg.Validate(); } catch (ArgumentException) { rejected = true; }

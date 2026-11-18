@@ -1839,9 +1839,10 @@ globalThis.JoystickCompare = (() =&gt; {
         const rad=mapped*Math.PI/180; x=Math.cos(rad)*r;y=Math.sin(rad)*r;
       }
     }
-    const maxZone=c.maxZone??1,square=c.square??true;
+    const maxZone=c.maxZone??1,square=c.square??true,circleScale=c.circleScale??1;
     if(maxZone!==1||!square){const magnitude=Math.hypot(x,y);if(magnitude&gt;0){const scale=Math.min(magnitude/maxZone,1)/magnitude;x*=scale;y*=scale;}}
     if(square &amp;&amp; x!==0 &amp;&amp; y!==0) { const k=Math.sqrt(x*x+y*y)/Math.max(Math.abs(x),Math.abs(y)); x*=k;y*=k; }
+    else if(!square &amp;&amp; (x!==0 || y!==0)) { const factor=Math.min(circleScale,1/Math.max(Math.abs(x),Math.abs(y)));x*=factor;y*=factor; }
     const out=[clamp(x,-1,1),clamp(-y,-1,1)];
     return {out,stick:out.map(v=&gt;Math.trunc(v*32767))};
   }
@@ -1878,7 +1879,7 @@ globalThis.JoystickCompare = (() =&gt; {
     return {out,stick:out.map(v=&gt;Math.trunc(v*32767))};
   }
   function remapper(x,y,c) {
-    if((c.mappingMode===&#x27;Angular&#x27;||c.mappingMode===&#x27;LegacyAngular&#x27;))return rl(x,y,{inner:c.innerDeadzone,outer:c.outerRingThreshold,threshold:c.snapAngleDeg,maxZone:c.angularMaxZone,square:c.angularSquareOutput});
+    if((c.mappingMode===&#x27;Angular&#x27;||c.mappingMode===&#x27;LegacyAngular&#x27;))return rl(x,y,{inner:c.innerDeadzone,outer:c.outerRingThreshold,threshold:c.snapAngleDeg,maxZone:c.angularMaxZone,square:c.angularSquareOutput,circleScale:c.angularCircleScale});
     return c.mappingMode===&#x27;Radial&#x27;?radial(x,y,c):decoupled(x,y,c);
   }
   function radial(x,y,c) {
@@ -1893,6 +1894,10 @@ globalThis.JoystickCompare = (() =&gt; {
       const r=Math.sqrt(ax*ax+ay*ay),expansion=r/Math.max(Math.abs(ax),Math.abs(ay)),scale=1+(expansion-1)*Math.pow(r,c.squareRoundness);
       ax=clamp(ax*scale,-1,1);ay=clamp(ay*scale,-1,1);
     }
+    if(!c.squareStick &amp;&amp; (ax!==0 || ay!==0)) {
+      const factor=Math.min(c.radialCircleScale??1,1/Math.max(Math.abs(ax),Math.abs(ay)));
+      ax*=factor;ay*=factor;
+    }
     const out=[clamp(ax,-1,1),clamp(ay,-1,1)];
     return {out,stick:out.map(v=&gt;Math.trunc(v*32767))};
   }
@@ -1903,7 +1908,7 @@ globalThis.JoystickCompare = (() =&gt; {
 (() =&gt; {
  const root=document.getElementById(&#x27;joystick-compare&#x27;),$=id=&gt;root.querySelector(&#x27;#jc-&#x27;+id),M=globalThis.JoystickCompare;
  const names=[&#x27;Radial&#x27;,&#x27;Axial&#x27;,&#x27;Angular&#x27;],colors=[&#x27;var(--blue, #3978c6)&#x27;,&#x27;var(--orange, #c77421)&#x27;,&#x27;var(--purple, #9162c6)&#x27;];
- const defaults=name=&gt;({mappingMode:name,innerDeadzone:.05,outerRingThreshold:0,snapAngleDeg:8,angularMaxZone:1,angularSquareOutput:true,radialAntiDeadzone:0,radialMaxZone:1,radialMaxOutput:1,xSnapWidth:.1,ySnapWidth:.1,centerBlendWidth:.05,xAntiDeadzone:0,yAntiDeadzone:0,xMaxZone:1,yMaxZone:1,xMaxOutput:1,yMaxOutput:1,squareStick:true,squareRoundness:0});
+ const defaults=name=&gt;({mappingMode:name,innerDeadzone:.05,outerRingThreshold:0,snapAngleDeg:8,angularMaxZone:1,angularSquareOutput:true,angularCircleScale:1,radialCircleScale:1,radialAntiDeadzone:0,radialMaxZone:1,radialMaxOutput:1,xSnapWidth:.1,ySnapWidth:.1,centerBlendWidth:.05,xAntiDeadzone:0,yAntiDeadzone:0,xMaxZone:1,yMaxZone:1,xMaxOutput:1,yMaxOutput:1,squareStick:true,squareRoundness:0});
  let state={version:4,radius:.65,angle:25,zoom:1,view:&#x27;output&#x27;,profiles:Object.fromEntries(names.map(n=&gt;[n,defaults(n)]))};
  const saved=window.openai?.widgetState?.privateContent?.state;
  if(saved?.version===4 &amp;&amp; names.every(n=&gt;saved.profiles?.[n]))state={...state,...saved,profiles:Object.fromEntries(names.map(n=&gt;[n,{...defaults(n),...saved.profiles[n],mappingMode:n}]))};
@@ -1914,15 +1919,16 @@ globalThis.JoystickCompare = (() =&gt; {
  function valid(c){
   const unit=v=&gt;Number.isFinite(v)&amp;&amp;v&gt;=0&amp;&amp;v&lt;=1;
   if(!unit(c.innerDeadzone))return &#x27;Inner deadzone must be between 0 and 1.&#x27;;
-  if(c.mappingMode===&#x27;Angular&#x27;)return unit(c.angularMaxZone)&amp;&amp;c.angularMaxZone&gt;c.innerDeadzone&amp;&amp;unit(c.outerRingThreshold)&amp;&amp;Number.isFinite(c.snapAngleDeg)&amp;&amp;c.snapAngleDeg&gt;=0&amp;&amp;c.snapAngleDeg&lt;45?&#x27;&#x27;:&#x27;Max zone must exceed inner deadzone (up to 1); threshold must be 0–1 and snap angle below 45°.&#x27;;
+  const circleSize=v=&gt;Number.isFinite(v)&amp;&amp;v&gt;=.1&amp;&amp;v&lt;=Math.SQRT2;
+  if(c.mappingMode===&#x27;Angular&#x27;)return circleSize(c.angularCircleScale)&amp;&amp;unit(c.angularMaxZone)&amp;&amp;c.angularMaxZone&gt;c.innerDeadzone&amp;&amp;unit(c.outerRingThreshold)&amp;&amp;Number.isFinite(c.snapAngleDeg)&amp;&amp;c.snapAngleDeg&gt;=0&amp;&amp;c.snapAngleDeg&lt;45?&#x27;&#x27;:&#x27;Max zone must exceed inner deadzone (up to 1); threshold must be 0–1 and snap angle below 45°.&#x27;;
   if(!Number.isFinite(c.squareRoundness)||c.squareRoundness&lt;0||c.squareRoundness&gt;1000)return &#x27;Square roundness must be 0–1000.&#x27;;
-  if(c.mappingMode===&#x27;Radial&#x27;)return unit(c.radialMaxZone)&amp;&amp;c.innerDeadzone&lt;c.radialMaxZone&amp;&amp;unit(c.radialAntiDeadzone)&amp;&amp;unit(c.radialMaxOutput)&amp;&amp;c.radialAntiDeadzone&lt;=c.radialMaxOutput?&#x27;&#x27;:&#x27;Max zone must exceed inner deadzone; anti-deadzone must not exceed max output (0–1).&#x27;;
+  if(c.mappingMode===&#x27;Radial&#x27;)return circleSize(c.radialCircleScale)&amp;&amp;unit(c.radialMaxZone)&amp;&amp;c.innerDeadzone&lt;c.radialMaxZone&amp;&amp;unit(c.radialAntiDeadzone)&amp;&amp;unit(c.radialMaxOutput)&amp;&amp;c.radialAntiDeadzone&lt;=c.radialMaxOutput?&#x27;&#x27;:&#x27;Max zone must exceed inner deadzone; anti-deadzone must not exceed max output (0–1).&#x27;;
   if(![&#x27;xSnapWidth&#x27;,&#x27;ySnapWidth&#x27;,&#x27;xAntiDeadzone&#x27;,&#x27;yAntiDeadzone&#x27;,&#x27;xMaxZone&#x27;,&#x27;yMaxZone&#x27;,&#x27;xMaxOutput&#x27;,&#x27;yMaxOutput&#x27;].every(k=&gt;unit(c[k])))return &#x27;Axis values must be between 0 and 1.&#x27;;
   if(!unit(c.centerBlendWidth)||c.centerBlendWidth&lt;.000001||c.xSnapWidth+c.centerBlendWidth&gt;=c.xMaxZone||c.ySnapWidth+c.centerBlendWidth&gt;=c.yMaxZone||c.innerDeadzone+c.centerBlendWidth&gt;=Math.min(c.xMaxZone,c.yMaxZone))return &#x27;Leave room for the center blend: deadzone and snap widths plus blend must be below max zones.&#x27;;
   return &#x27;&#x27;;
  }
  const cards={};
- function field(parent,name,key,label,max=1,step=.001){const row=document.createElement(&#x27;label&#x27;);row.textContent=label;const input=document.createElement(&#x27;input&#x27;);input.type=&#x27;number&#x27;;input.min=key===&#x27;centerBlendWidth&#x27;?.000001:0;input.max=max;input.step=step;input.value=state.profiles[name][key];input.id=&#x27;jc-&#x27;+name+&#x27;-&#x27;+key;input.setAttribute(&#x27;aria-label&#x27;,name+&#x27; &#x27;+label);input.addEventListener(&#x27;input&#x27;,()=&gt;{state.profiles[name][key]=input.value===&#x27;&#x27;?NaN:Number(input.value);render();save();});row.append(input);parent.append(row);}
+ function field(parent,name,key,label,max=1,step=.001,min=0){const row=document.createElement(&#x27;label&#x27;);row.textContent=label;const input=document.createElement(&#x27;input&#x27;);input.type=&#x27;number&#x27;;input.min=key===&#x27;centerBlendWidth&#x27;?.000001:min;input.max=max;input.step=step;input.value=state.profiles[name][key];input.id=&#x27;jc-&#x27;+name+&#x27;-&#x27;+key;input.setAttribute(&#x27;aria-label&#x27;,name+&#x27; &#x27;+label);input.addEventListener(&#x27;input&#x27;,()=&gt;{state.profiles[name][key]=input.value===&#x27;&#x27;?NaN:Number(input.value);render();save();});row.append(input);parent.append(row);return input;}
  function build(){
   $(&#x27;profiles&#x27;).replaceChildren();$(&#x27;legend&#x27;).replaceChildren();
   names.forEach((name,i)=&gt;{
@@ -1933,13 +1939,13 @@ globalThis.JoystickCompare = (() =&gt; {
    const error=document.createElement(&#x27;div&#x27;);error.className=&#x27;error&#x27;;error.setAttribute(&#x27;role&#x27;,&#x27;status&#x27;);card.append(error);
    const config=document.createElement(&#x27;div&#x27;);card.append(config);cards[name]={svg,read,error};
    field(config,name,&#x27;innerDeadzone&#x27;,&#x27;Inner deadzone&#x27;);
-   if(name===&#x27;Angular&#x27;){field(config,name,&#x27;outerRingThreshold&#x27;,&#x27;Outer ring threshold&#x27;);field(config,name,&#x27;snapAngleDeg&#x27;,&#x27;Snap angle (degrees)&#x27;,44.9,.1);field(config,name,&#x27;angularMaxZone&#x27;,&#x27;Max zone&#x27;);const row=document.createElement(&#x27;label&#x27;);row.textContent=&#x27;Square output&#x27;;const input=document.createElement(&#x27;input&#x27;);input.type=&#x27;checkbox&#x27;;input.checked=state.profiles[name].angularSquareOutput;input.setAttribute(&#x27;aria-label&#x27;,&#x27;Angular Square output&#x27;);input.addEventListener(&#x27;change&#x27;,()=&gt;{state.profiles[name].angularSquareOutput=input.checked;render();save();});row.append(input);config.append(row);}
+   if(name===&#x27;Angular&#x27;){field(config,name,&#x27;outerRingThreshold&#x27;,&#x27;Outer ring threshold&#x27;);field(config,name,&#x27;snapAngleDeg&#x27;,&#x27;Snap angle (degrees)&#x27;,44.9,.1);field(config,name,&#x27;angularMaxZone&#x27;,&#x27;Max zone&#x27;);const row=document.createElement(&#x27;label&#x27;);row.textContent=&#x27;Square output&#x27;;const input=document.createElement(&#x27;input&#x27;);input.type=&#x27;checkbox&#x27;;input.checked=state.profiles[name].angularSquareOutput;input.setAttribute(&#x27;aria-label&#x27;,&#x27;Angular Square output&#x27;);input.addEventListener(&#x27;change&#x27;,()=&gt;{state.profiles[name].angularSquareOutput=input.checked;render();save();});row.append(input);config.append(row);const circle=field(config,name,&#x27;angularCircleScale&#x27;,&#x27;Circle size (non-square)&#x27;,Math.SQRT2,.001,.1);circle.disabled=input.checked;input.addEventListener(&#x27;change&#x27;,()=&gt;circle.disabled=input.checked);}
    if(name===&#x27;Radial&#x27;){field(config,name,&#x27;radialAntiDeadzone&#x27;,&#x27;Anti-deadzone&#x27;);field(config,name,&#x27;radialMaxZone&#x27;,&#x27;Max zone&#x27;);field(config,name,&#x27;radialMaxOutput&#x27;,&#x27;Max output&#x27;);}
    if(name===&#x27;Axial&#x27;){
     field(config,name,&#x27;xSnapWidth&#x27;,&#x27;X snap width (north/south)&#x27;);field(config,name,&#x27;ySnapWidth&#x27;,&#x27;Y snap width (east/west)&#x27;);field(config,name,&#x27;centerBlendWidth&#x27;,&#x27;Center blend width&#x27;);
     for(const axis of [&#x27;x&#x27;,&#x27;y&#x27;]){const group=document.createElement(&#x27;details&#x27;);group.open=true;const title=document.createElement(&#x27;summary&#x27;);title.textContent=axis.toUpperCase()+&#x27; output&#x27;;group.append(title);config.append(group);for(const[key,label]of [[&#x27;AntiDeadzone&#x27;,&#x27;Anti-deadzone&#x27;],[&#x27;MaxZone&#x27;,&#x27;Max zone&#x27;],[&#x27;MaxOutput&#x27;,&#x27;Max output&#x27;]])field(group,name,axis+key,label);}
    }
-   if(name!==&#x27;Angular&#x27;){const row=document.createElement(&#x27;label&#x27;);row.textContent=&#x27;Square Stick&#x27;;const input=document.createElement(&#x27;input&#x27;);input.type=&#x27;checkbox&#x27;;input.checked=state.profiles[name].squareStick;input.setAttribute(&#x27;aria-label&#x27;,name+&#x27; Square Stick&#x27;);input.addEventListener(&#x27;change&#x27;,()=&gt;{state.profiles[name].squareStick=input.checked;render();save();});row.append(input);config.append(row);field(config,name,&#x27;squareRoundness&#x27;,&#x27;Square roundness&#x27;,1000,.1);}
+   if(name!==&#x27;Angular&#x27;){const row=document.createElement(&#x27;label&#x27;);row.textContent=&#x27;Square Stick&#x27;;const input=document.createElement(&#x27;input&#x27;);input.type=&#x27;checkbox&#x27;;input.checked=state.profiles[name].squareStick;input.setAttribute(&#x27;aria-label&#x27;,name+&#x27; Square Stick&#x27;);input.addEventListener(&#x27;change&#x27;,()=&gt;{state.profiles[name].squareStick=input.checked;render();save();});row.append(input);config.append(row);if(name===&#x27;Radial&#x27;){const circle=field(config,name,&#x27;radialCircleScale&#x27;,&#x27;Circle size (non-square)&#x27;,Math.SQRT2,.001,.1);circle.disabled=input.checked;input.addEventListener(&#x27;change&#x27;,()=&gt;circle.disabled=input.checked);}field(config,name,&#x27;squareRoundness&#x27;,&#x27;Square roundness&#x27;,1000,.1);}
    const reset=document.createElement(&#x27;button&#x27;);reset.textContent=&#x27;Reset &#x27;+name;reset.addEventListener(&#x27;click&#x27;,()=&gt;{state.profiles[name]=defaults(name);build();render();save();});config.append(reset);
    $(&#x27;profiles&#x27;).append(card);
    const legend=document.createElement(&#x27;span&#x27;);legend.textContent=&#x27;● &#x27;+name;legend.style.color=colors[i];$(&#x27;legend&#x27;).append(legend);
