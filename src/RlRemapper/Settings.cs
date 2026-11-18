@@ -30,6 +30,9 @@ public sealed class Settings
     [Category("Angular")][DisplayName("Square output")]
     [Description("Angular only: expand output into a square. Disable for circular output while keeping angular snapping. Independent of Radial and Axial Square Stick.")]
     public bool AngularSquareOutput { get; set; } = true;
+    [Category("Angular")][DisplayName("Circle size")]
+    [Description("Angular only, when Square output is disabled: scale the circular output radius (0.1–1.4142135623730951). 1 preserves the original circle, lower values shrink it, and higher values expand it toward a square while preserving output angle. Saturates at the square boundary.")]
+    public double AngularCircleScale { get; set; } = 1;
     [Category("Radial")][DisplayName("Radial anti-deadzone")]
     [Description("Radial only: minimum active output radius just outside the inner deadzone (0–Radial max output). A nonzero value introduces an onset step. Applied before optional Square Stick.")]
     public double RadialAntiDeadzone { get; set; }
@@ -39,6 +42,9 @@ public sealed class Settings
     [Category("Radial")][DisplayName("Radial max output")]
     [Description("Radial only: maximum output radius before optional Square Stick (Radial anti-deadzone–1). Response rises linearly from the anti-deadzone to this value. Squaring can increase the final radius.")]
     public double RadialMaxOutput { get; set; } = 1;
+    [Category("Radial")][DisplayName("Circle size")]
+    [Description("Radial only, when Square Stick is disabled: scale the circular output radius (0.1–1.4142135623730951). 1 preserves the original circle, lower values shrink it, and higher values expand it toward a square while preserving output angle. Applied after the radial response; saturates at the square boundary.")]
+    public double RadialCircleScale { get; set; } = 1;
     [Category("Axial")][DisplayName("X snap width (north/south)")]
     [Description("Axial only: suppresses X near north/south outside the center blend. Half-width of the vertical strip as a fraction of full axis travel (0–1), below X max zone.")]
     public double XSnapWidth { get; set; } = 0.10;
@@ -120,6 +126,8 @@ public sealed class Settings
             throw new ArgumentException("Deadzone/threshold must be 0–1, angle 0–<45 degrees, poll rate 50–1000 Hz, controller index >= 0.");
         if (MappingMode == StickMappingMode.Angular && (!UnitRange(AngularMaxZone) || AngularMaxZone <= InnerDeadzone))
             throw new ArgumentException("Angular max zone must be above Inner deadzone and at most 1.");
+        if (!ValidCircleScale(AngularCircleScale) || !ValidCircleScale(RadialCircleScale))
+            throw new ArgumentException("Radial/Angular circle size must be finite and between 0.1 and √2 (approximately 1.4142).");
         if (MappingMode == StickMappingMode.Radial)
         {
             if (!UnitRange(RadialMaxZone) || InnerDeadzone >= RadialMaxZone)
@@ -147,6 +155,7 @@ public sealed class Settings
         _ = ParseButtons();
     }
     static bool UnitRange(double value) => double.IsFinite(value) && value >= 0 && value <= 1;
+    static bool ValidCircleScale(double value) => double.IsFinite(value) && value >= 0.1 && value <= Math.Sqrt(2);
     public (int Index, ushort Mask)[] ParseButtons()
     {
         var map = new Dictionary<string, ushort>(StringComparer.OrdinalIgnoreCase) {

@@ -15,9 +15,9 @@ internal sealed class SettingsView(Settings settings) : CustomTypeDescriptor
             foreach (string name in names) result.Add(new SettingProperty(settings, source[name]!, category));
         }
         Add("Profile", nameof(Settings.MappingMode));
-        Add("Radial", "InnerDeadzone", "RadialAntiDeadzone", "RadialMaxZone", "RadialMaxOutput", "SquareStick", "SquareRoundness");
+        Add("Radial", "InnerDeadzone", "RadialAntiDeadzone", "RadialMaxZone", "RadialMaxOutput", "SquareStick", "RadialCircleScale", "SquareRoundness");
         Add("Axial", "InnerDeadzone", "XSnapWidth", "YSnapWidth", "CenterBlendWidth", "XAntiDeadzone", "XMaxZone", "XMaxOutput", "YAntiDeadzone", "YMaxZone", "YMaxOutput", "SquareStick", "SquareRoundness");
-        Add("Angular", "InnerDeadzone", "OuterRingThreshold", "SnapAngleDeg", "AngularMaxZone", "AngularSquareOutput");
+        Add("Angular", "InnerDeadzone", "OuterRingThreshold", "SnapAngleDeg", "AngularMaxZone", "AngularSquareOutput", "AngularCircleScale");
         foreach (PropertyDescriptor property in source)
             if (property.Category is "Controller" or "Performance") result.Add(new SettingProperty(settings, property, property.Category));
         return new PropertyDescriptorCollection(result.ToArray(), true);

@@ -51,9 +51,10 @@ globalThis.JoystickCompare = (() => {
         const rad=mapped*Math.PI/180; x=Math.cos(rad)*r;y=Math.sin(rad)*r;
       }
     }
-    const maxZone=c.maxZone??1,square=c.square??true;
+    const maxZone=c.maxZone??1,square=c.square??true,circleScale=c.circleScale??1;
     if(maxZone!==1||!square){const magnitude=Math.hypot(x,y);if(magnitude>0){const scale=Math.min(magnitude/maxZone,1)/magnitude;x*=scale;y*=scale;}}
     if(square && x!==0 && y!==0) { const k=Math.sqrt(x*x+y*y)/Math.max(Math.abs(x),Math.abs(y)); x*=k;y*=k; }
+    else if(!square && (x!==0 || y!==0)) { const factor=Math.min(circleScale,1/Math.max(Math.abs(x),Math.abs(y)));x*=factor;y*=factor; }
     const out=[clamp(x,-1,1),clamp(-y,-1,1)];
     return {out,stick:out.map(v=>Math.trunc(v*32767))};
   }
@@ -90,7 +91,7 @@ globalThis.JoystickCompare = (() => {
     return {out,stick:out.map(v=>Math.trunc(v*32767))};
   }
   function remapper(x,y,c) {
-    if((c.mappingMode==='Angular'||c.mappingMode==='LegacyAngular'))return rl(x,y,{inner:c.innerDeadzone,outer:c.outerRingThreshold,threshold:c.snapAngleDeg,maxZone:c.angularMaxZone,square:c.angularSquareOutput});
+    if((c.mappingMode==='Angular'||c.mappingMode==='LegacyAngular'))return rl(x,y,{inner:c.innerDeadzone,outer:c.outerRingThreshold,threshold:c.snapAngleDeg,maxZone:c.angularMaxZone,square:c.angularSquareOutput,circleScale:c.angularCircleScale});
     return c.mappingMode==='Radial'?radial(x,y,c):decoupled(x,y,c);
   }
   function radial(x,y,c) {
@@ -105,6 +106,10 @@ globalThis.JoystickCompare = (() => {
       const r=Math.sqrt(ax*ax+ay*ay),expansion=r/Math.max(Math.abs(ax),Math.abs(ay)),scale=1+(expansion-1)*Math.pow(r,c.squareRoundness);
       ax=clamp(ax*scale,-1,1);ay=clamp(ay*scale,-1,1);
     }
+    if(!c.squareStick && (ax!==0 || ay!==0)) {
+      const factor=Math.min(c.radialCircleScale??1,1/Math.max(Math.abs(ax),Math.abs(ay)));
+      ax*=factor;ay*=factor;
+    }
     const out=[clamp(ax,-1,1),clamp(ay,-1,1)];
     return {out,stick:out.map(v=>Math.trunc(v*32767))};
   }
@@ -115,7 +120,7 @@ globalThis.JoystickCompare = (() => {
 (() => {
  const root=document.getElementById('joystick-compare'),$=id=>root.querySelector('#jc-'+id),M=globalThis.JoystickCompare;
  const names=['Radial','Axial','Angular'],colors=['var(--blue, #3978c6)','var(--orange, #c77421)','var(--purple, #9162c6)'];
- const defaults=name=>({mappingMode:name,innerDeadzone:.05,outerRingThreshold:0,snapAngleDeg:8,angularMaxZone:1,angularSquareOutput:true,radialAntiDeadzone:0,radialMaxZone:1,radialMaxOutput:1,xSnapWidth:.1,ySnapWidth:.1,centerBlendWidth:.05,xAntiDeadzone:0,yAntiDeadzone:0,xMaxZone:1,yMaxZone:1,xMaxOutput:1,yMaxOutput:1,squareStick:true,squareRoundness:0});
+ const defaults=name=>({mappingMode:name,innerDeadzone:.05,outerRingThreshold:0,snapAngleDeg:8,angularMaxZone:1,angularSquareOutput:true,angularCircleScale:1,radialCircleScale:1,radialAntiDeadzone:0,radialMaxZone:1,radialMaxOutput:1,xSnapWidth:.1,ySnapWidth:.1,centerBlendWidth:.05,xAntiDeadzone:0,yAntiDeadzone:0,xMaxZone:1,yMaxZone:1,xMaxOutput:1,yMaxOutput:1,squareStick:true,squareRoundness:0});
  let state={version:4,radius:.65,angle:25,zoom:1,view:'output',profiles:Object.fromEntries(names.map(n=>[n,defaults(n)]))};
  const saved=window.openai?.widgetState?.privateContent?.state;
  if(saved?.version===4 && names.every(n=>saved.profiles?.[n]))state={...state,...saved,profiles:Object.fromEntries(names.map(n=>[n,{...defaults(n),...saved.profiles[n],mappingMode:n}]))};
@@ -126,15 +131,16 @@ globalThis.JoystickCompare = (() => {
  function valid(c){
   const unit=v=>Number.isFinite(v)&&v>=0&&v<=1;
   if(!unit(c.innerDeadzone))return 'Inner deadzone must be between 0 and 1.';
-  if(c.mappingMode==='Angular')return unit(c.angularMaxZone)&&c.angularMaxZone>c.innerDeadzone&&unit(c.outerRingThreshold)&&Number.isFinite(c.snapAngleDeg)&&c.snapAngleDeg>=0&&c.snapAngleDeg<45?'':'Max zone must exceed inner deadzone (up to 1); threshold must be 0–1 and snap angle below 45°.';
+  const circleSize=v=>Number.isFinite(v)&&v>=.1&&v<=Math.SQRT2;
+  if(c.mappingMode==='Angular')return circleSize(c.angularCircleScale)&&unit(c.angularMaxZone)&&c.angularMaxZone>c.innerDeadzone&&unit(c.outerRingThreshold)&&Number.isFinite(c.snapAngleDeg)&&c.snapAngleDeg>=0&&c.snapAngleDeg<45?'':'Max zone must exceed inner deadzone (up to 1); threshold must be 0–1 and snap angle below 45°.';
   if(!Number.isFinite(c.squareRoundness)||c.squareRoundness<0||c.squareRoundness>1000)return 'Square roundness must be 0–1000.';
-  if(c.mappingMode==='Radial')return unit(c.radialMaxZone)&&c.innerDeadzone<c.radialMaxZone&&unit(c.radialAntiDeadzone)&&unit(c.radialMaxOutput)&&c.radialAntiDeadzone<=c.radialMaxOutput?'':'Max zone must exceed inner deadzone; anti-deadzone must not exceed max output (0–1).';
+  if(c.mappingMode==='Radial')return circleSize(c.radialCircleScale)&&unit(c.radialMaxZone)&&c.innerDeadzone<c.radialMaxZone&&unit(c.radialAntiDeadzone)&&unit(c.radialMaxOutput)&&c.radialAntiDeadzone<=c.radialMaxOutput?'':'Max zone must exceed inner deadzone; anti-deadzone must not exceed max output (0–1).';
   if(!['xSnapWidth','ySnapWidth','xAntiDeadzone','yAntiDeadzone','xMaxZone','yMaxZone','xMaxOutput','yMaxOutput'].every(k=>unit(c[k])))return 'Axis values must be between 0 and 1.';
   if(!unit(c.centerBlendWidth)||c.centerBlendWidth<.000001||c.xSnapWidth+c.centerBlendWidth>=c.xMaxZone||c.ySnapWidth+c.centerBlendWidth>=c.yMaxZone||c.innerDeadzone+c.centerBlendWidth>=Math.min(c.xMaxZone,c.yMaxZone))return 'Leave room for the center blend: deadzone and snap widths plus blend must be below max zones.';
   return '';
  }
  const cards={};
- function field(parent,name,key,label,max=1,step=.001){const row=document.createElement('label');row.textContent=label;const input=document.createElement('input');input.type='number';input.min=key==='centerBlendWidth'?.000001:0;input.max=max;input.step=step;input.value=state.profiles[name][key];input.id='jc-'+name+'-'+key;input.setAttribute('aria-label',name+' '+label);input.addEventListener('input',()=>{state.profiles[name][key]=input.value===''?NaN:Number(input.value);render();save();});row.append(input);parent.append(row);}
+ function field(parent,name,key,label,max=1,step=.001,min=0){const row=document.createElement('label');row.textContent=label;const input=document.createElement('input');input.type='number';input.min=key==='centerBlendWidth'?.000001:min;input.max=max;input.step=step;input.value=state.profiles[name][key];input.id='jc-'+name+'-'+key;input.setAttribute('aria-label',name+' '+label);input.addEventListener('input',()=>{state.profiles[name][key]=input.value===''?NaN:Number(input.value);render();save();});row.append(input);parent.append(row);return input;}
  function build(){
   $('profiles').replaceChildren();$('legend').replaceChildren();
   names.forEach((name,i)=>{
@@ -145,13 +151,13 @@ globalThis.JoystickCompare = (() => {
    const error=document.createElement('div');error.className='error';error.setAttribute('role','status');card.append(error);
    const config=document.createElement('div');card.append(config);cards[name]={svg,read,error};
    field(config,name,'innerDeadzone','Inner deadzone');
-   if(name==='Angular'){field(config,name,'outerRingThreshold','Outer ring threshold');field(config,name,'snapAngleDeg','Snap angle (degrees)',44.9,.1);field(config,name,'angularMaxZone','Max zone');const row=document.createElement('label');row.textContent='Square output';const input=document.createElement('input');input.type='checkbox';input.checked=state.profiles[name].angularSquareOutput;input.setAttribute('aria-label','Angular Square output');input.addEventListener('change',()=>{state.profiles[name].angularSquareOutput=input.checked;render();save();});row.append(input);config.append(row);}
+   if(name==='Angular'){field(config,name,'outerRingThreshold','Outer ring threshold');field(config,name,'snapAngleDeg','Snap angle (degrees)',44.9,.1);field(config,name,'angularMaxZone','Max zone');const row=document.createElement('label');row.textContent='Square output';const input=document.createElement('input');input.type='checkbox';input.checked=state.profiles[name].angularSquareOutput;input.setAttribute('aria-label','Angular Square output');input.addEventListener('change',()=>{state.profiles[name].angularSquareOutput=input.checked;render();save();});row.append(input);config.append(row);const circle=field(config,name,'angularCircleScale','Circle size (non-square)',Math.SQRT2,.001,.1);circle.disabled=input.checked;input.addEventListener('change',()=>circle.disabled=input.checked);}
    if(name==='Radial'){field(config,name,'radialAntiDeadzone','Anti-deadzone');field(config,name,'radialMaxZone','Max zone');field(config,name,'radialMaxOutput','Max output');}
    if(name==='Axial'){
     field(config,name,'xSnapWidth','X snap width (north/south)');field(config,name,'ySnapWidth','Y snap width (east/west)');field(config,name,'centerBlendWidth','Center blend width');
     for(const axis of ['x','y']){const group=document.createElement('details');group.open=true;const title=document.createElement('summary');title.textContent=axis.toUpperCase()+' output';group.append(title);config.append(group);for(const[key,label]of [['AntiDeadzone','Anti-deadzone'],['MaxZone','Max zone'],['MaxOutput','Max output']])field(group,name,axis+key,label);}
    }
-   if(name!=='Angular'){const row=document.createElement('label');row.textContent='Square Stick';const input=document.createElement('input');input.type='checkbox';input.checked=state.profiles[name].squareStick;input.setAttribute('aria-label',name+' Square Stick');input.addEventListener('change',()=>{state.profiles[name].squareStick=input.checked;render();save();});row.append(input);config.append(row);field(config,name,'squareRoundness','Square roundness',1000,.1);}
+   if(name!=='Angular'){const row=document.createElement('label');row.textContent='Square Stick';const input=document.createElement('input');input.type='checkbox';input.checked=state.profiles[name].squareStick;input.setAttribute('aria-label',name+' Square Stick');input.addEventListener('change',()=>{state.profiles[name].squareStick=input.checked;render();save();});row.append(input);config.append(row);if(name==='Radial'){const circle=field(config,name,'radialCircleScale','Circle size (non-square)',Math.SQRT2,.001,.1);circle.disabled=input.checked;input.addEventListener('change',()=>circle.disabled=input.checked);}field(config,name,'squareRoundness','Square roundness',1000,.1);}
    const reset=document.createElement('button');reset.textContent='Reset '+name;reset.addEventListener('click',()=>{state.profiles[name]=defaults(name);build();render();save();});config.append(reset);
    $('profiles').append(card);
    const legend=document.createElement('span');legend.textContent='● '+name;legend.style.color=colors[i];$('legend').append(legend);

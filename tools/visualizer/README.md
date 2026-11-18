@@ -1,7 +1,7 @@
 # Stick profile comparison
 
 Open `index.html` to compare **Radial**, **Axial**, and **Angular** side by side.
-Each plot has its own configuration directly underneath. Angular includes Max zone and an independent Square output toggle. Axial output settings
+Each plot has its own configuration directly underneath. Angular includes Max zone, an independent Square output toggle, and a non-square Circle size control. Radial also has a separate Circle size setting. The new controls shrink or expand the circular output; they are inactive when the corresponding Square option is enabled. Axial output settings
 are grouped into X and Y subsections. Changes affect only the visualizer.
 
 Drag on any plot or use the shared input radius and angle sliders. Compare
@@ -24,7 +24,7 @@ dotnet run --project tests/TransformChecks -- --export-visualizer-cases artifact
 node tests/VisualizerChecks.cjs
 ```
 
-The 3,302 reference cases across 26 configurations cover all three production
+The 3,810 reference cases across 30 configurations cover all three production
 mappings. Maximum floating error is 1.56e-15; 22 cases differ by one signed
 16-bit encoding count at floating-point truncation boundaries. Numeric saved
 app modes retain their existing IDs: Angular = 0, Axial = 1, Radial = 2.

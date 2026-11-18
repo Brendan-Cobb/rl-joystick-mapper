@@ -28,6 +28,7 @@ internal static class Checks
         properties["Radial.RadialMaxOutput"]!.SetValue(grid.SelectedObject, .8);
         Assert(Field<Settings>("current").RadialMaxOutput == .8, "Grouped setting did not edit the underlying profile");
         Assert(properties["Angular.AngularMaxZone"]?.Category == "Angular" && properties["Angular.AngularSquareOutput"]?.Category == "Angular", "Angular controls missing from grouped settings");
+        Assert(properties["Angular.AngularCircleScale"]?.Category == "Angular" && properties["Radial.RadialCircleScale"]?.Category == "Radial", "Circle-size controls missing from grouped settings");
         properties["Angular.AngularSquareOutput"]!.SetValue(grid.SelectedObject, false);
         Assert(!Field<Settings>("current").AngularSquareOutput && Field<Settings>("current").SquareStick, "Angular shape changed another profile");
         Assert(Enum.GetNames<StickMappingMode>().Order().SequenceEqual(new[] { "Angular", "Axial", "Radial" }), "Old profile names remain");

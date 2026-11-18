@@ -46,7 +46,22 @@ internal static class RadialChecks
         Near(p.X, .8 / Math.Sqrt(2), "Square-gate input saturates radius");
         Near(p.Y, p.X, "Square-gate input keeps its angle");
 
+        cfg.RadialCircleScale = 1.2;
+        p = Transform.ApplyStick(1, 1, cfg);
+        Near(Length(p), .96, "Expanded circle scales radial max output");
+        Near(p.X, p.Y, "Expanded circle preserves angle");
+        cfg.RadialMaxOutput = 1;
+        p = Transform.ApplyStick(1, 1, cfg);
+        Near(Length(p), 1.2, "Expanded circle reaches beyond unit radius diagonally");
+        p = Transform.ApplyStick(1, 0, cfg);
+        Near(p.X, 1, "Expanded circle stops on X square boundary");
+        cfg.RadialCircleScale = .7;
+        p = Transform.ApplyStick(1, 0, cfg);
+        Near(p.X, .7, "Contracted circle shrinks the maximum cardinal output");
+        cfg.RadialCircleScale = 1; cfg.RadialMaxOutput = .8;
+
         cfg.SquareStick = true;
+        cfg.RadialCircleScale = .7; // Ignored when Square Stick is on.
         p = Transform.ApplyStick(.3, .4, cfg);
         Near(p.X, .375, "Full squaring follows radial response X");
         Near(p.Y, .5, "Full squaring follows radial response Y");
@@ -55,7 +70,7 @@ internal static class RadialChecks
         Near(p.Y, .8, "Full square corner is symmetric");
         cfg.RadialMaxOutput = 0; cfg.RadialAntiDeadzone = 0; cfg.Validate();
         Near(Length(Transform.ApplyStick(.5, .6, cfg)), 0, "Zero max output disables output including squaring");
-        cfg.RadialMaxOutput = .25; cfg.RadialAntiDeadzone = .25; cfg.SquareStick = false; cfg.Validate();
+        cfg.RadialMaxOutput = .25; cfg.RadialAntiDeadzone = .25; cfg.SquareStick = false; cfg.RadialCircleScale = 1; cfg.Validate();
         Near(Length(Transform.ApplyStick(.11, .02, cfg)), .25, "Equal anti/max values give a constant active radius");
 
         foreach (double bad in new[] { double.NaN, double.PositiveInfinity, double.NegativeInfinity })
@@ -126,7 +141,7 @@ internal static class RadialChecks
         var copy = cfg.Snapshot(); copy.Validate();
         Check(JsonSerializer.Serialize(cfg) == JsonSerializer.Serialize(copy), "Radial settings survive JSON/snapshot round-trip");
 
-        foreach (string name in new[] { nameof(Settings.InnerDeadzone), nameof(Settings.RadialAntiDeadzone), nameof(Settings.RadialMaxZone), nameof(Settings.RadialMaxOutput), nameof(Settings.SquareRoundness) })
+        foreach (string name in new[] { nameof(Settings.InnerDeadzone), nameof(Settings.RadialAntiDeadzone), nameof(Settings.RadialMaxZone), nameof(Settings.RadialMaxOutput), nameof(Settings.RadialCircleScale), nameof(Settings.SquareRoundness) })
             foreach (double bad in new[] { double.NaN, double.PositiveInfinity, double.NegativeInfinity })
                 Invalid(s => typeof(Settings).GetProperty(name)!.SetValue(s, bad));
         Invalid(s => s.InnerDeadzone = 1);
@@ -139,6 +154,8 @@ internal static class RadialChecks
         Invalid(s => s.RadialMaxOutput = 1.01);
         Invalid(s => s.SquareRoundness = -.01);
         Invalid(s => s.SquareRoundness = 1001);
+        Invalid(s => s.RadialCircleScale = .099);
+        Invalid(s => s.RadialCircleScale = 1.415);
         Console.WriteLine($"Radial checks passed ({checks:N0} assertions).");
     }
 
@@ -155,6 +172,8 @@ internal static class RadialChecks
             cfg.SquareStick = roundness >= 0; cfg.SquareRoundness = Math.Max(0, roundness);
             profiles.Add(($"radial-{profiles.Count}", cfg));
         }
+        profiles.Add(("radial-circle-small", new() { MappingMode = StickMappingMode.Radial, SquareStick = false, RadialCircleScale = .7 }));
+        profiles.Add(("radial-circle-expanded", new() { MappingMode = StickMappingMode.Radial, SquareStick = false, RadialCircleScale = 1.2 }));
         profiles.Add(("radial-zero", new() { MappingMode = StickMappingMode.Radial, RadialMaxOutput = 0 }));
         profiles.Add(("radial-constant", new() { MappingMode = StickMappingMode.Radial, RadialAntiDeadzone = .3, RadialMaxOutput = .3 }));
         profiles.Add(("axial-default", new() { MappingMode = StickMappingMode.Axial }));
@@ -167,6 +186,9 @@ internal static class RadialChecks
         foreach (double zone in new[] { .5, .8, 1.0 })
         foreach (bool square in new[] { false, true })
             profiles.Add(($"angular-{zone}-{square}", new() { AngularMaxZone = zone, AngularSquareOutput = square, OuterRingThreshold = .3 }));
+
+        profiles.Add(("angular-circle-small", new() { AngularSquareOutput = false, AngularCircleScale = .7, SnapAngleDeg = 8 }));
+        profiles.Add(("angular-circle-expanded", new() { AngularSquareOutput = false, AngularCircleScale = 1.2, SnapAngleDeg = 8 }));
 
         var inputs = new List<double[]> { new[] { 0.0, 0.0 }, new[] { 1.0, 1.0 }, new[] { -.9, .7 }, new[] { .03, .04 }, new[] { .6, .3 }, new[] { .05, .6 }, new[] { 1.0, -.3 } };
         foreach (double radius in new[] { .025, .05, .050001, .1, .100001, .3, .65, 1.0 })
